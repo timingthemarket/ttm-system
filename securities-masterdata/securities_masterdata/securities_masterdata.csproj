@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+	  <TargetFramework>net10.0</TargetFramework>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <Nullable>enable</Nullable>
+	  <!-- Generate ready to run images during publishing to improvement cold starts. -->
+	  <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="securities-service.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0" />
+    <PackageReference Include="Serilog.Enrichers.Span" Version="3.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\securities_masterdata.Domain\securities_masterdata.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="BackgroundServices\" />
+    <Folder Include="Consumers\Query\" />
+    <Folder Include="Shared\" />
+  </ItemGroup>
+    
+</Project>

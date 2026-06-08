@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+    dockerimage:
+        container_name: article-news-raw
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        ports:
+            - "5007:5007"
+        env_file:
+            - .env
+        restart: unless-stopped
+        deploy:
+            resources:
+                limits:
+                    cpus: "1"
+                    memory: "1024M"
