@@ -18,26 +18,12 @@ public static class DiContainer
 {
     public static void ConfigureMasstransit(this IServiceCollection service, IWebHostEnvironment env)
     {
-        var localhostAddress = Environment.GetEnvironmentVariable("DOCKER_RABBITMQ_ACCESS") ?? "localhost";
         service.AddMassTransit(x =>
         {
             x.AddConsumer<FetchNewsUrlsTrigger>();
 
             x.SetKebabCaseEndpointNameFormatter();
-            if (env.IsDevelopment())
-                x.UsingInMemory();
-            else
-                x.UsingRabbitMq((context, cfg) =>
-                {
-                    cfg.UseConsumeFilter(typeof(ExceptionFilter<>), context);
-
-                    cfg.Host(localhostAddress, "/", h =>
-                    {
-                        h.Username("user");
-                        h.Password("password");
-                    });
-                    cfg.ConfigureEndpoints(context);
-                });
+            x.UsingInMemory();
         });
     }
 
