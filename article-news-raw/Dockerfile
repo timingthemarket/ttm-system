@@ -1,15 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
-COPY nuget.config nuget.config
-COPY ["article_news_raw/article_news_raw.csproj", "article_news_raw/article_news_raw.csproj"]
-COPY ["article_news_raw.DataAccess/article_news_raw.DataAccess.csproj", "article_news_raw.DataAccess/article_news_raw.DataAccess.csproj"]
-COPY ["article_news_raw.Domain/article_news_raw.Domain.csproj", "article_news_raw.Domain/article_news_raw.Domain.csproj"]
+COPY article-news-raw/nuget.config nuget.config
+COPY ["article-news-raw/article_news_raw/article_news_raw.csproj", "article-news-raw/article_news_raw/article_news_raw.csproj"]
+COPY ["article-news-raw/article_news_raw.DataAccess/article_news_raw.DataAccess.csproj", "article-news-raw/article_news_raw.DataAccess/article_news_raw.DataAccess.csproj"]
+COPY ["article-news-raw/article_news_raw.Domain/article_news_raw.Domain.csproj", "article-news-raw/article_news_raw.Domain/article_news_raw.Domain.csproj"]
+COPY ["TTM.Shared/TTM.Shared/TTM.Shared.csproj", "TTM.Shared/TTM.Shared/TTM.Shared.csproj"]
 
-RUN dotnet restore article_news_raw/article_news_raw.csproj
+RUN dotnet restore article-news-raw/article_news_raw/article_news_raw.csproj
 COPY . .
 
-RUN dotnet publish article_news_raw/article_news_raw.csproj -c Release -o /app/publish --os linux
+RUN dotnet publish article-news-raw/article_news_raw/article_news_raw.csproj -c Release -o /app/publish --os linux
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
