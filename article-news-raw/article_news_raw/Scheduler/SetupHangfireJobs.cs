@@ -25,7 +25,7 @@ public class SetupHangfireJobs
         RecurringJob.AddOrUpdate(
             "daily-news-url-sync",
             () => PublishFetchNewesUrlsEvent(),
-            "20 3,9,15,21 * * *",
+            "40 * * * *", // "20 3,9,15,21 * * *",
             new RecurringJobOptions
             {
                 TimeZone = TimeZoneInfo.Utc,
