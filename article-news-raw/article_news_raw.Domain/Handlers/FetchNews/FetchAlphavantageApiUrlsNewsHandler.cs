@@ -19,8 +19,9 @@ public class FetchAlphavantageApiUrlsNewsHandler(
 
     public async Task HandleFetchNewsUrls(DateTime? toDate = null)
     {
-        logger.LogInformation("Fetching news urls from AlphaVantage");
-
+        var date = toDate?.AddDays(-5) ?? DateTime.UtcNow.AddDays(-1);
+        logger.LogInformation("Fetching news urls from AlphaVantage date {Date}", date);
+        
         var newsFunctionsList = new List<(Func<int, DateTime, DateTime?, Task<AlphaVantageNewsArticle>> Func, int Limit, string FuncName)>
         {
             (alphaVantageApiNewsService.GetFinanceNews, 150, "GetFinanceNews"),
@@ -32,14 +33,14 @@ public class FetchAlphavantageApiUrlsNewsHandler(
         };
 
         var secondsWait = GetSecondsForWaitingBetweenCalls(newsFunctionsList.Count);
+        
         foreach (var alphaNews in newsFunctionsList)
         {
-            var date = toDate?.AddDays(-5) ?? DateTime.UtcNow.AddDays(-1);
             var news = await alphaNews.Func(alphaNews.Limit, date, toDate);
             var feed = news.Feed ?? new List<Feed>();
             if (feed.Count == 0)
             {
-                logger.LogInformation("No articles to after mapping from AlphaVantage");
+                logger.LogInformation("No articles to after mapping from AlphaVantage ({FName})", alphaNews.FuncName);
                 continue;
             }
 
@@ -53,7 +54,7 @@ public class FetchAlphavantageApiUrlsNewsHandler(
                 await articleUrlRepository.SaveArticle(articleUrl);
             }
             
-            logger.LogInformation("Fetched {NrArticles} articles from AlphaVantage and inserted {Inserted} ({FName})", feed.Count, inserted, alphaNews.FuncName);
+            logger.LogInformation("Fetched {NrArticles} articles from AlphaVantage with and inserted {Inserted} ({FName})", feed.Count, inserted, alphaNews.FuncName);
 
             if (secondsWait > 0)
                 await Task.Delay(TimeSpan.FromSeconds(secondsWait));

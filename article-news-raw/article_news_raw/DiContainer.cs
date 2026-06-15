@@ -23,7 +23,10 @@ public static class DiContainer
             x.AddConsumer<FetchNewsUrlsTrigger>();
 
             x.SetKebabCaseEndpointNameFormatter();
-            x.UsingInMemory();
+            x.UsingInMemory((context, cfg) =>                                                                                                                                                                                   
+            {                                                                                                                                                                                                                   
+                cfg.ConfigureEndpoints(context);                                                                                                                                                                                
+            }); 
         });
     }
 
