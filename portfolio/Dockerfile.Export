@@ -1,0 +1,21 @@
+﻿FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /app
+
+COPY nuget.config nuget.config
+COPY ["portfolio/portfolio.DataAccess/portfolio.DataAccess.csproj", "portfolio/portfolio.DataAccess/portfolio.DataAccess.csproj"]
+COPY ["portfolio/portfolio.Domain/portfolio.Domain.csproj", "portfolio/portfolio.Domain/portfolio.Domain.csproj"]
+COPY ["portfolio/portfolio.Explorer/portfolio.Explorer.csproj", "portfolio/portfolio.Explorer/portfolio.Explorer.csproj"]
+COPY ["TTM.Shared/TTM.Shared/TTM.Shared.csproj", "TTM.Shared/TTM.Shared/TTM.Shared.csproj"]
+
+RUN dotnet restore "portfolio/portfolio.Explorer/portfolio.Explorer.csproj"
+COPY . .
+
+RUN dotnet publish portfolio/portfolio.Explorer/portfolio.Explorer.csproj -c Release -o /app/publish --os linux
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "portfolio.Explorer.dll"]
