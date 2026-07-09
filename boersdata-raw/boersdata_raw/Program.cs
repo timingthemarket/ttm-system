@@ -4,6 +4,7 @@ using boersdata_raw.BackgroundServices;
 using boersdata_raw.Filters;
 using boersdata_raw.gRPC.Services;
 using boersdata_raw.Scheduler;
+using FluentMigrator.Runner;
 using Hangfire;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -122,6 +123,9 @@ app.MapGrpcService<BackfillService>();
 app.MapControllers();
 
 var scope = app.Services.CreateScope();
+var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+runner.MigrateUp();
+
 var hfJobs = scope.ServiceProvider.GetRequiredService<SetupHangfireJobs>();
 hfJobs.SetupJobs();
 
