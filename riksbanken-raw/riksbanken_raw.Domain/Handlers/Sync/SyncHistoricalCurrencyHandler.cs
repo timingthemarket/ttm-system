@@ -1,9 +1,5 @@
-﻿using MassTransit;
-using riksbanken_raw.DataAccess.Interfaces;
-using riksbanken_raw.DataAccess.Models;
+﻿using riksbanken_raw.DataAccess.Interfaces;
 using riksbanken_raw.Domain.Interfaces;
-using ttm_system.Shared.Constants;
-using ttm_system.Shared.Events.RiksbankenRaw;
 
 namespace riksbanken_raw.Domain.Handlers.Sync;
 
@@ -12,7 +8,8 @@ public class SyncHistoricalCurrencyHandler : IHistoricalCurrencySyncHandler
     private readonly IRiksbankenRepository _riksbankenRepository;
     private readonly IRiksbankenService _riksbankenService;
 
-    public SyncHistoricalCurrencyHandler(IRiksbankenRepository riksbankenRepository, IRiksbankenService riksbankenService)
+    public SyncHistoricalCurrencyHandler(IRiksbankenRepository riksbankenRepository,
+        IRiksbankenService riksbankenService)
     {
         _riksbankenRepository = riksbankenRepository;
         _riksbankenService = riksbankenService;
@@ -29,5 +26,4 @@ public class SyncHistoricalCurrencyHandler : IHistoricalCurrencySyncHandler
             var nrErrors = await _riksbankenRepository.SaveHistoricalCurrencies(currencies);
         }
     }
-    
 }

@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "riksbanken_raw.DataAccess",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "riksbanken_raw.Domain", "riksbanken_raw.Domain\riksbanken_raw.Domain.csproj", "{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "riksbanken_raw.Shared", "riksbanken_raw.Shared\riksbanken_raw.Shared.csproj", "{D2C81341-FD96-4CED-9CF6-5E374017F9B0}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{38693EBA-AC8C-44C8-AB58-E93740B975EA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TTM.Shared", "..\TTM.Shared\TTM.Shared\TTM.Shared.csproj", "{9989C9BE-B09D-437B-88DB-6CEC0522B8FA}"
@@ -39,10 +37,6 @@ Global
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9989C9BE-B09D-437B-88DB-6CEC0522B8FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9989C9BE-B09D-437B-88DB-6CEC0522B8FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9989C9BE-B09D-437B-88DB-6CEC0522B8FA}.Release|Any CPU.ActiveCfg = Release|Any CPU

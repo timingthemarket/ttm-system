@@ -1,4 +1,4 @@
-namespace ttm_system.Shared.Constants;
+namespace TTM.Shared.Constants;
 
 public class FinanceConstants
 {

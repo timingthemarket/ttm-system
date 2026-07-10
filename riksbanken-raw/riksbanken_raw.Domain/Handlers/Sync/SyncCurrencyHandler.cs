@@ -4,8 +4,8 @@ using riksbanken_raw.DataAccess.Interfaces;
 using riksbanken_raw.DataAccess.Models;
 using riksbanken_raw.Domain.Cache;
 using riksbanken_raw.Domain.Interfaces;
-using ttm_system.Shared.Constants;
 using ttm_system.Shared.Models.RiksbankenRaw;
+using TTM.Shared.Constants;
 
 namespace riksbanken_raw.Domain.Handlers.Sync;
 
