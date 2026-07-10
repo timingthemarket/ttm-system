@@ -1,12 +1,8 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace boersdata_raw.DataAccess.Models;
 
 public record StockPrice
 {
-    [BsonIgnoreIfDefault]
-    public ObjectId Id { get; set; }
+    public long Id { get; set; }
 
     public long InsId { get; set; }
     public string Ticker { get; set; }
@@ -15,5 +11,5 @@ public record StockPrice
     public double? High { get; set; }
     public double? Low { get; set; }
     public long? Volume { get; set; }
-    public DateTime Date { get; set; }
+    public DateOnly Date { get; set; }
 }

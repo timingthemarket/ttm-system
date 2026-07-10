@@ -7,8 +7,8 @@ using boersdata_raw.Scheduler;
 using FluentMigrator.Runner;
 using Hangfire;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using boersdata_raw.DataAccess.Constants;
 using Microsoft.Extensions.Options;
-using MongoDB.Driver;
 using ProtoBuf.Grpc.Server;
 using Serilog;
 using Serilog.Enrichers.Span;
@@ -22,10 +22,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 SharedSettings.AppName = nameof(boersdata_raw);
 
-var mongoClientString = Environment.GetEnvironmentVariable("MONGODB_CONN_STRING") ?? "";
-var settings = MongoClientSettings.FromConnectionString(mongoClientString);
-settings.ConnectTimeout = TimeSpan.FromSeconds(10);
-var mongoClient = new MongoClient(settings);
+var connString = Environment.GetEnvironmentVariable("POSTGRESSQL_CONN") ??
+                 throw new Exception("The environment variable 'POSTGRESSQL_CONN' was not found");
+Configuration.DbConString = connString;
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services
@@ -34,7 +33,12 @@ builder.Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IMongoClient>(mongoClient);
+builder.Services.AddFluentMigratorCore()
+    .ConfigureRunner(rb => rb
+        .AddPostgres()
+        .WithGlobalConnectionString(Configuration.DbConString)
+        .ScanIn(typeof(Program).Assembly).For.Migrations());
+
 builder.Services.AddHangfire(h =>
 {
     h.SetDataCompatibilityLevel(CompatibilityLevel.Version_180);

@@ -1,68 +1,47 @@
 using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models.Report;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public class ReportRepository : IReportRepository
 {
-    private readonly IMongoDatabase _database;
-    private readonly IMongoCollection<Report> _defaultCollection;
-    private readonly IMongoCollection<ReportTypes> _defaultReportTypesCollection;
-    
-    public ReportRepository(IMongoClient client)
-    {
-        _database = client.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
-        _defaultReportTypesCollection = _database.GetCollection<ReportTypes>("ReportTypes");
-        _defaultCollection = _database.GetCollection<Report>("Reports");
-
-        if (!IndexExist(_defaultCollection.Indexes, "InsId"))
-        {
-            var index = Builders<Report>.IndexKeys
-                .Ascending(s => s.InsId)
-                .Ascending(s => s.ReportType);
-
-            _defaultCollection.Indexes.CreateOne(
-                new CreateIndexModel<Report>(index, new CreateIndexOptions { Name = "InsId" }));
-        }
-
-        if (!IndexExist(_defaultCollection.Indexes, "ticker_1"))
-        {
-            var index = Builders<Report>.IndexKeys
-                .Ascending(s => s.Ticker);
-
-            _defaultCollection.Indexes.CreateOne(
-                new CreateIndexModel<Report>(index, new CreateIndexOptions { Name = "ticker_1" }));
-        }
-    }
-
-    private bool IndexExist<T>(IMongoIndexManager<T> indexManager, string indexName)
-    {
-        var allIndexes = indexManager.List().ToList();
-        var indexNames = allIndexes
-            .SelectMany(index => index.Elements)
-            .Where(element => element.Name == "name")
-            .Select(name => name.Value.ToString());
-
-        return indexNames.Contains(indexName);
-    }
-
     public async Task SaveReportTypes(List<ReportTypes> types, CancellationToken token = default)
     {
-        await _defaultReportTypesCollection.DeleteManyAsync(_ => true, token);
-        await _defaultReportTypesCollection.InsertManyAsync(types, null, token);
+        await using var context = new BoersDataDbContext();
+        await using var transaction = await context.Database.BeginTransactionAsync(token);
+
+        await context.Database.ExecuteSqlAsync($"DELETE FROM report_types", token);
+
+        foreach (var type in types)
+            type.Id = 0;
+
+        context.ReportTypes.AddRange(types);
+        await context.SaveChangesAsync(token);
+        await transaction.CommitAsync(token);
     }
 
     public async Task SaveHistoricalReports(string ticker, List<Report> reports, CancellationToken token = default)
     {
-        await _defaultCollection.DeleteManyAsync(s => s.Ticker == ticker, token);
-        await _defaultCollection.InsertManyAsync(reports, null, token);
+        await using var context = new BoersDataDbContext();
+        await using var transaction = await context.Database.BeginTransactionAsync(token);
+
+        await context.Database.ExecuteSqlAsync($"DELETE FROM report WHERE ticker = {ticker}", token);
+
+        // Reports read back via GetReports carry a populated Id; reset for identity insert
+        foreach (var report in reports)
+            report.Id = 0;
+
+        context.Reports.AddRange(reports);
+        await context.SaveChangesAsync(token);
+        await transaction.CommitAsync(token);
     }
-    
+
     public async Task<List<Report>> GetReports(string ticker, ReportType type, CancellationToken token = default)
     {
-        return await _defaultCollection
-            .Find(r => r.Ticker == ticker && r.ReportType == type)
+        await using var context = new BoersDataDbContext();
+        return await context.Reports.AsNoTracking()
+            .Where(r => r.Ticker == ticker && r.ReportType == type)
             .ToListAsync(token);
     }
 }

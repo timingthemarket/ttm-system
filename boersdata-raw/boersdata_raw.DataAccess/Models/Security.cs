@@ -1,6 +1,3 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace boersdata_raw.DataAccess.Models;
 
 public enum SecurityType
@@ -16,16 +13,23 @@ public enum SecurityType
     Cryptocurrencies = 8
 }
 
-[BsonIgnoreExtraElements]
+public enum SecurityOrigin
+{
+    Nordic,
+    Global
+}
+
 public record Security
 {
-    [BsonIgnoreIfDefault] public ObjectId Id { get; set; }
+    public long Id { get; set; }
+
+    public SecurityOrigin Origin { get; set; }
 
     public string Ticker { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Isin { get; set; } = string.Empty;
 
-    [BsonRepresentation(BsonType.String)] public SecurityType Type { get; set; }
+    public SecurityType Type { get; set; }
 
     public long MarketId { get; set; }
     public long CountryId { get; set; }

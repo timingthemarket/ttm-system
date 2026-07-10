@@ -1,0 +1,30 @@
+[
+  {
+    "SeriesId": "SEKEURPMI",
+    "Source": "Nasdaq",
+    "ShortDescription": "EUR",
+    "GroupId": 130,
+    "LastFetched": null
+  },
+  {
+    "SeriesId": "SEKNOKPMI",
+    "Source": "Nasdaq",
+    "ShortDescription": "NOK",
+    "GroupId": 130,
+    "LastFetched": null
+  },
+  {
+    "SeriesId": "SEKDKKPMI",
+    "Source": "Nasdaq",
+    "ShortDescription": "DKK",
+    "GroupId": 130,
+    "LastFetched": null
+  },
+  {
+    "SeriesId": "SEKUSDPMI",
+    "Source": "Nasdaq",
+    "ShortDescription": "USD",
+    "GroupId": 130,
+    "LastFetched": null
+  }
+]
