@@ -1,9 +1,13 @@
 using System.Text.Json;
 using Hangfire;
+using JasperFx;
+using Marten;
+using Marten.Schema;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
-using MongoDB.Driver;
 using riksbanken_raw;
+using riksbanken_raw.DataAccess.Models;
+using riksbanken_raw.DataAccess.Seed;
 using riksbanken_raw.Filters;
 using riksbanken_raw.Scheduler;
 using TTM.Shared.Constants;
@@ -15,10 +19,8 @@ SharedSettings.AppName = nameof(riksbanken_raw);
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
-var mongoClientString = Environment.GetEnvironmentVariable("MONGODB_CONN_STRING") ?? "";
-var settings = MongoClientSettings.FromConnectionString(mongoClientString);
-settings.ConnectTimeout = TimeSpan.FromSeconds(10);
-var mongoClient = new MongoClient(settings);
+var connString = Environment.GetEnvironmentVariable("POSTGRESSQL_CONN") ??
+                 throw new Exception("The environment variable 'POSTGRESSQL_CONN' was not found");
 
 builder.Services
     .AddControllers()
@@ -26,7 +28,18 @@ builder.Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IMongoClient>(mongoClient);
+builder.Services.AddMarten(opts =>
+    {
+        opts.Connection(connString);
+        opts.DatabaseSchemaName = "riksbanken";
+        opts.AutoCreateSchemaObjects = AutoCreate.CreateOrUpdate;
+
+        opts.Schema.For<CurrencyRate>()
+            .UniqueIndex(UniqueIndexType.Computed, "uidx_currency_date_tocode_fromcode",
+                x => x.Date, x => x.ToCode, x => x.FromCode);
+    })
+    .InitializeWith(new SeedExchangeRateSeries());
+
 builder.Services.AddHangfire(h =>
 {
     h.SetDataCompatibilityLevel(CompatibilityLevel.Version_170);

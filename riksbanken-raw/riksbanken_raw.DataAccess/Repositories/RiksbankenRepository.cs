@@ -1,4 +1,4 @@
-﻿using MongoDB.Driver;
+using Marten;
 using riksbanken_raw.DataAccess.Interfaces;
 using riksbanken_raw.DataAccess.Models;
 
@@ -6,79 +6,85 @@ namespace riksbanken_raw.DataAccess.Repositories;
 
 public class RiksbankenRepository : IRiksbankenRepository
 {
-    private readonly IMongoDatabase database;
-    private readonly IMongoCollection<ExchangeRateSeries> _ratesCollection;
-    private readonly IMongoCollection<CurrencyRate> _currencyCollection;
-    
-    public RiksbankenRepository(IMongoClient context)
+    private readonly IDocumentStore _store;
+
+    public RiksbankenRepository(IDocumentStore store)
     {
-        database = context.GetDatabase(MongoDatabaseSettings.CurrenciesDatabaseName);
-        _ratesCollection = database.GetCollection<ExchangeRateSeries>("ExchangeRateSeries");
-        _currencyCollection = database.GetCollection<CurrencyRate>("Currency");
-
-        if (!IndexExist(_currencyCollection.Indexes, "Date#FromCode#ToCode"))
-        {
-            var index = Builders<CurrencyRate>.IndexKeys
-                .Ascending(s => s.Date)
-                .Ascending(s => s.ToCode)
-                .Ascending(s => s.FromCode);
-
-            _currencyCollection.Indexes.CreateOne(
-                new CreateIndexModel<CurrencyRate>(index,
-                    new CreateIndexOptions { Unique = true, Name = "Date#FromCode#ToCode" }));
-        }
-    }
-
-    private bool IndexExist<T>(IMongoIndexManager<T> indexManager, string indexName)
-    {
-        var allIndexes = indexManager.List().ToList();
-        var indexNames = allIndexes
-            .SelectMany(index => index.Elements)
-            .Where(element => element.Name == "name")
-            .Select(name => name.Value.ToString());
-
-        return indexNames.Contains(indexName);
+        _store = store;
     }
 
     public async Task<List<ExchangeRateSeries>> GetExchangeRateSeries()
     {
-        return await _ratesCollection.Find(_ => true).ToListAsync();
+        await using var session = _store.LightweightSession();
+        var series = await session.Query<ExchangeRateSeries>().ToListAsync();
+        return series.ToList();
     }
-    
+
     public async Task<bool> UpdateLatestFetchedDate(string seriesId, DateTime latestDate)
     {
-        var filter = Builders<ExchangeRateSeries>.Filter
-            .Eq(serie => serie.SeriesId, seriesId);
-        var update = Builders<ExchangeRateSeries>.Update
-            .Set(serie => serie.LastFetched, latestDate);
-        
-        var result = await _ratesCollection.UpdateOneAsync(filter, update);
-        return result.IsAcknowledged;
+        await using var session = _store.LightweightSession();
+        var serie = await session.Query<ExchangeRateSeries>()
+            .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
+        if (serie is null)
+            return false;
+
+        serie.LastFetched = latestDate;
+        session.Store(serie);
+        await session.SaveChangesAsync();
+        return true;
     }
 
     public async Task<List<CurrencyRate>> GetCurrenciesFromCode(string code)
     {
-        return await _currencyCollection.Find(c => c.FromCode == code).ToListAsync();
+        await using var session = _store.LightweightSession();
+        var rates = await session.Query<CurrencyRate>()
+            .Where(c => c.FromCode == code)
+            .ToListAsync();
+        return rates.ToList();
     }
 
     public async Task<bool> SaveCurrency(CurrencyRate cur)
     {
-        var replaced = await _currencyCollection
-            .ReplaceOneAsync(s => s.FromCode == cur.FromCode && s.Date == cur.Date, cur, new ReplaceOptions { IsUpsert = true });
-        return replaced.IsAcknowledged;
+        await using var session = _store.LightweightSession();
+        var existing = await session.Query<CurrencyRate>()
+            .FirstOrDefaultAsync(c => c.FromCode == cur.FromCode && c.Date == cur.Date);
+        if (existing is not null)
+            cur.Id = existing.Id;
+
+        session.Store(cur);
+        await session.SaveChangesAsync();
+        return true;
     }
 
     public async Task<int> SaveHistoricalCurrencies(List<CurrencyRate> curriencies)
     {
-        try
+        if (curriencies.Count == 0)
+            return 0;
+
+        await using var session = _store.LightweightSession();
+
+        var fromCodes = curriencies.Select(c => c.FromCode).Distinct().ToList();
+        var existing = await session.Query<CurrencyRate>()
+            .Where(c => c.FromCode.IsOneOf(fromCodes))
+            .ToListAsync();
+
+        var seenKeys = existing
+            .Select(e => (e.Date, e.ToCode, e.FromCode))
+            .ToHashSet();
+
+        var duplicates = 0;
+        foreach (var cur in curriencies)
         {
-            await _currencyCollection.InsertManyAsync(curriencies, new InsertManyOptions { IsOrdered = false });
-        }
-        catch (MongoBulkWriteException e)
-        {
-            return e.WriteErrors.Count;
+            if (!seenKeys.Add((cur.Date, cur.ToCode, cur.FromCode)))
+            {
+                duplicates++;
+                continue;
+            }
+
+            session.Store(cur);
         }
 
-        return 0;
+        await session.SaveChangesAsync();
+        return duplicates;
     }
 }

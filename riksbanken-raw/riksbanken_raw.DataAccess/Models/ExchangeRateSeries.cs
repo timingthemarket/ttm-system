@@ -1,14 +1,11 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace riksbanken_raw.DataAccess.Models;
 
 public class ExchangeRateSeries
 {
-    [BsonIgnoreIfDefault] public ObjectId Id { get; set; }
-    public string SeriesId { get; set; }
-    public string Source { get; set; }
-    public string ShortDescription { get; set; }
+    public Guid Id { get; set; }
+    public string SeriesId { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string ShortDescription { get; set; } = string.Empty;
     public int GroupId { get; set; }
     public DateTime? LastFetched { get; set; }
 }
