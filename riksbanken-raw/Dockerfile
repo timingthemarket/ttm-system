@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
-COPY riksbanken_raw/nuget.config nuget.config
 COPY ["riksbanken-raw/riksbanken_raw/riksbanken_raw.csproj", "riksbanken-raw/riksbanken_raw/riksbanken_raw.csproj"]
 COPY ["riksbanken-raw/riksbanken_raw.DataAccess/riksbanken_raw.DataAccess.csproj", "riksbanken-raw/riksbanken_raw.DataAccess/riksbanken_raw.DataAccess.csproj"]
 COPY ["riksbanken-raw/riksbanken_raw.Domain/riksbanken_raw.Domain.csproj", "riksbanken-raw/riksbanken_raw.Domain/riksbanken_raw.Domain.csproj"]
