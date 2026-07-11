@@ -31,7 +31,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddMarten(opts =>
     {
         opts.Connection(connString);
-        opts.DatabaseSchemaName = "riksbanken";
+        //opts.DatabaseSchemaName = "riksbanken";
         opts.AutoCreateSchemaObjects = AutoCreate.CreateOrUpdate;
 
         opts.Schema.For<CurrencyRate>()

@@ -1,12 +1,12 @@
 IMAGE_NAME="riksbanken-raw"
 
 echo "Building $IMAGE_NAME..."
-docker build -f Dockerfile -t $IMAGE_NAME:latest ..
+docker build -f Dockerfile --platform linux/arm64 -t $IMAGE_NAME:latest ..
 
 echo "Tagging $IMAGE_NAME..."
-docker tag $IMAGE_NAME:latest 127.0.0.1:5000/$IMAGE_NAME:latest
+docker tag $IMAGE_NAME:latest host.docker.internal:5000/$IMAGE_NAME:latest
 
 echo "Pushing $IMAGE_NAME..."
-docker push 127.0.0.1:5000/$IMAGE_NAME:latest
+docker push host.docker.internal:5000/$IMAGE_NAME:latest
 
 echo "Done."
