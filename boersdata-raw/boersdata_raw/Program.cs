@@ -132,7 +132,7 @@ builder.Logging
     .ClearProviders()
     .AddSerilog(logger);
 
-builder.Services.AddHostedService<DailyPricesService>();
+//builder.Services.AddHostedService<DailyPricesService>();
 builder.Services.AddHostedService<ReportsService>();
 builder.Services.AddHostedService<WeeklyRefreshPricesService>();
 

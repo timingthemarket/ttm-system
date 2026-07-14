@@ -63,7 +63,7 @@ public class WeeklyRefreshPricesService(ILogger<WeeklyRefreshPricesService> logg
                     // ---------------------
                     
                     using var securitiesActivity = ActivitySource.StartActivity("WeeklyRefreshPricesService.GetAllSecurities");
-                    var securities = await securitiesRepository.GetAllSecurities((int?)null, stoppingToken);
+                    var securities = await securitiesRepository.GetAllSecurities(null, stoppingToken);
                     securitiesActivity?.SetTag("securities.count", securities.Count);
                     
                     var securityChunks = securities.Chunk(5).ToArray();
