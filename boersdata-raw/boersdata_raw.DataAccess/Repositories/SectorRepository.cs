@@ -1,64 +1,45 @@
-using boersdata_raw.DataAccess.Interfaces;
+﻿using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models;
-using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public sealed class SectorRepository : ISectorRepository
 {
+    private readonly IMongoCollection<Sector> _defaultCollection;
+
+    public SectorRepository(IMongoClient context)
+    {
+        var database = context.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
+        _defaultCollection = database.GetCollection<Sector>("Sectors");
+    }
+
     public async Task Delete(string name, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        // fk_industry_sector cascades, removing the sector's industry rows
-        await context.Database.ExecuteSqlAsync($"DELETE FROM sector WHERE name = {name}", token);
+        await _defaultCollection.DeleteOneAsync(s => s.Name == name, token);
     }
 
-    public async Task<bool> Save(Sector sector, CancellationToken token = default)
+    public async Task<bool> Save(Sector market, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync(token);
-
-        await context.Database.ExecuteSqlAsync($"DELETE FROM sector WHERE name = {sector.Name}", token);
-
-        sector.Id = 0;
-        context.Sectors.Add(sector);
-        await context.SaveChangesAsync(token);
-        await transaction.CommitAsync(token);
-
-        return true;
+        var replaced = await _defaultCollection
+            .ReplaceOneAsync(s => s.Name == market.Name, market, new ReplaceOptions { IsUpsert = true }, token);
+        return replaced.IsAcknowledged;
     }
 
-    public async Task<long> SaveBatch(List<Sector> sectors, CancellationToken token = default)
+    public async Task<long> SaveBatch(List<Sector> market, CancellationToken token = default)
     {
-        if (sectors.Count == 0)
-            return 0;
-
-        await using var context = new BoersDataDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync(token);
-
-        var names = sectors.Select(s => s.Name).ToArray();
-        await context.Database.ExecuteSqlAsync($"DELETE FROM sector WHERE name = ANY({names})", token);
-
-        foreach (var sector in sectors)
-            sector.Id = 0;
-
-        context.Sectors.AddRange(sectors);
-        await context.SaveChangesAsync(token);
-        await transaction.CommitAsync(token);
-
-        return sectors.Count;
+        var tasks = market.Select(s => Save(s, token)).ToArray();
+        var completedUpserts = await Task.WhenAll(tasks);
+        return completedUpserts.Sum(u => u ? 1 : 0);
     }
 
     public async Task<Sector?> GetById(string name, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        return await context.Sectors.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Name == name, token);
+        return await _defaultCollection.Find(s => s.Name == name).FirstOrDefaultAsync(token);
     }
 
     public async Task<IList<Sector>> GetAll(CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        return await context.Sectors.AsNoTracking().ToListAsync(token);
+        return await _defaultCollection.Find(_ => true).ToListAsync(token);
     }
 }

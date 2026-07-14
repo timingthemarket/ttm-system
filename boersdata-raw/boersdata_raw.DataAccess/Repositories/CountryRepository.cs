@@ -1,63 +1,46 @@
-using boersdata_raw.DataAccess.Interfaces;
+﻿using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models;
-using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public sealed class CountryRepository : ICountryRepository
 {
-    public async Task<bool> Save(Country country, CancellationToken token = default)
+    private readonly IMongoDatabase database;
+    private readonly IMongoCollection<Country> defaultCollection;
+    
+    public CountryRepository(IMongoClient context)
     {
-        await using var context = new BoersDataDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync(token);
-
-        await context.Database.ExecuteSqlAsync($"DELETE FROM country WHERE name = {country.Name}", token);
-
-        country.Id = 0;
-        context.Countries.Add(country);
-        await context.SaveChangesAsync(token);
-        await transaction.CommitAsync(token);
-
-        return true;
+        database = context.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
+        defaultCollection = database.GetCollection<Country>("Countries");
     }
 
-    public async Task<long> SaveBatch(List<Country> countries, CancellationToken token = default)
+    public async Task<bool> Save(Country market, CancellationToken token = default)
     {
-        if (countries.Count == 0)
-            return 0;
+        var replaced = await defaultCollection
+            .ReplaceOneAsync(s => s.Name == market.Name, market, new ReplaceOptions { IsUpsert = true }, token);
+        return replaced.IsAcknowledged;
+    }
 
-        await using var context = new BoersDataDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync(token);
-
-        var names = countries.Select(c => c.Name).ToArray();
-        await context.Database.ExecuteSqlAsync($"DELETE FROM country WHERE name = ANY({names})", token);
-
-        foreach (var country in countries)
-            country.Id = 0;
-
-        context.Countries.AddRange(countries);
-        await context.SaveChangesAsync(token);
-        await transaction.CommitAsync(token);
-
-        return countries.Count;
+    public async Task<long> SaveBatch(List<Country> market, CancellationToken token = default)
+    {
+        var tasks = market.Select(s => Save(s, token)).ToArray();
+        var completedUpserts = await Task.WhenAll(tasks);
+        return completedUpserts.Sum(u => u ? 1 : 0);
     }
 
     public async Task Delete(string name, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        await context.Database.ExecuteSqlAsync($"DELETE FROM country WHERE name = {name}", token);
+        await defaultCollection.DeleteOneAsync(s => s.Name == name, token);
     }
 
     public async Task<Country?> GetById(string name, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        return await context.Countries.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Name == name, token);
+        return await defaultCollection.Find<Country>(s => s.Name == name).FirstOrDefaultAsync(token);
     }
 
     public async Task<IList<Country>> GetAll(CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        return await context.Countries.AsNoTracking().ToListAsync(token);
+        return await defaultCollection.Find(_ => true).ToListAsync(token);
     }
 }

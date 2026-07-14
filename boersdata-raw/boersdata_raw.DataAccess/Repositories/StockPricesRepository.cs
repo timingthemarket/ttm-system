@@ -1,79 +1,90 @@
+﻿using System.Runtime.CompilerServices;
 using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Npgsql;
+using MongoDB.Driver;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public sealed class StockPricesRepository : IStockPricesRepository
 {
     private readonly IMemoryCache _cache;
+    private readonly IMongoDatabase _database;
+    private readonly IMongoCollection<StockPrice> _defaultCollection;
 
-    public StockPricesRepository(IMemoryCache cache)
+    public StockPricesRepository(IMongoClient context, IMemoryCache cache)
     {
         _cache = cache;
+        _database = context.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
+        _defaultCollection = _database.GetCollection<StockPrice>("SecurityPrices");
+
+        if (!IndexExist(_defaultCollection.Indexes, "Ticker#Date"))
+        {
+            var index = Builders<StockPrice>.IndexKeys
+                .Ascending(s => s.Ticker)
+                .Ascending(s => s.Date);
+
+            _defaultCollection.Indexes.CreateOne(
+                new CreateIndexModel<StockPrice>(index,
+                    new CreateIndexOptions { Unique = true, Name = "Ticker#Date" }));
+        }
     }
 
     public async Task<List<StockPrice>> GetHistoricalPrices(string ticker, CancellationToken token = default)
     {
-        if (_cache.TryGetValue(MakeCacheKey(ticker), out List<StockPrice>? prices))
-            return prices!;
+        if (_cache.TryGetValue(MakeCacheKey(ticker), out List<StockPrice> prices))
+            return prices;
 
-        await using var context = new BoersDataDbContext();
-        return await context.StockPrices.AsNoTracking()
-            .Where(s => s.Ticker == ticker)
-            .OrderBy(s => s.Date)
-            .ToListAsync(token);
+        return await _defaultCollection.Find(s => s.Ticker == ticker).ToListAsync(token);
     }
 
     public async Task<List<StockPrice>> GetHistoricalPrices(string ticker, DateTime fromDate,
         CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        var from = AsUtc(fromDate);
-        return await context.StockPrices.AsNoTracking()
-            .Where(s => s.Ticker == ticker && s.Date >= from)
-            .OrderBy(s => s.Date)
+        return await _defaultCollection.Find(s => s.Ticker == ticker && s.Date >= fromDate)
             .ToListAsync(token);
     }
 
     public async Task<bool> SavePrice(StockPrice price, CancellationToken token = default)
     {
-        await using var context = new BoersDataDbContext();
-        var date = AsUtc(price.Date);
-
-        var affected = await context.Database.ExecuteSqlAsync($"""
-            INSERT INTO stock_price (ins_id, ticker, open, close, high, low, volume, date)
-            VALUES ({price.InsId}, {price.Ticker}, {price.Open}, {price.Close}, {price.High}, {price.Low}, {price.Volume}, {date})
-            ON CONFLICT (ins_id, date) DO UPDATE SET
-                ticker = EXCLUDED.ticker,
-                open = EXCLUDED.open,
-                close = EXCLUDED.close,
-                high = EXCLUDED.high,
-                low = EXCLUDED.low,
-                volume = EXCLUDED.volume
-            """, token);
-
-        return affected > 0;
+        var replaced = await _defaultCollection
+            .ReplaceOneAsync(s => s.InsId == price.InsId && s.Date == price.Date, price,
+                new ReplaceOptions { IsUpsert = true }, token);
+        return replaced.IsAcknowledged;
     }
-
+    
     public async Task<int> SaveBatch(List<StockPrice> prices, CancellationToken token = default)
     {
-        if (prices.Count == 0)
-            return 0;
+        try
+        {
+            await _defaultCollection.InsertManyAsync(prices, new InsertManyOptions { IsOrdered = false },
+                token);
+        }
+        catch (MongoBulkWriteException e)
+        {
+            return e.WriteErrors.Count;
+        }
 
-        await using var context = new BoersDataDbContext();
-        return await SaveBatchCore(context, prices, token);
+        return 0;
     }
-
-    public async Task<int> SaveHistoricalPrices(List<StockPrice> prices, string? ticker, bool useCache = true,
-        CancellationToken token = default)
+    
+    public async Task<int> SaveHistoricalPrices(List<StockPrice> prices, string? ticker, bool useCache = true, CancellationToken token = default)
     {
         if (useCache && ticker is not null)
             _cache.Set(MakeCacheKey(ticker), prices, TimeSpan.FromMinutes(60));
 
         return await SaveBatch(prices, token);
+    }
+
+    private bool IndexExist<T>(IMongoIndexManager<T> indexManager, string indexName)
+    {
+        var allIndexes = indexManager.List().ToList();
+        var indexNames = allIndexes
+            .SelectMany(index => index.Elements)
+            .Where(element => element.Name == "name")
+            .Select(name => name.Value.ToString());
+
+        return indexNames.Contains(indexName);
     }
 
     /// <summary>
@@ -82,8 +93,7 @@ public sealed class StockPricesRepository : IStockPricesRepository
     /// <param name="ticker"></param>
     public async Task DeleteHistoricalPrices(string ticker)
     {
-        await using var context = new BoersDataDbContext();
-        await context.StockPrices.Where(s => s.Ticker == ticker).ExecuteDeleteAsync();
+        await _defaultCollection.DeleteManyAsync(s => s.Ticker == ticker);
     }
 
     /// <summary>
@@ -93,49 +103,9 @@ public sealed class StockPricesRepository : IStockPricesRepository
     /// <param name="prices"></param>
     public async Task<int> OverwriteHistoricalPrices(string ticker, List<StockPrice> prices)
     {
-        await using var context = new BoersDataDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync();
-
-        await context.StockPrices.Where(s => s.Ticker == ticker).ExecuteDeleteAsync();
-        var duplicates = prices.Count == 0 ? 0 : await SaveBatchCore(context, prices);
-
-        await transaction.CommitAsync();
-        return duplicates;
+        await DeleteHistoricalPrices(ticker);
+        return await SaveHistoricalPrices(prices, ticker, false);
     }
-
-    /// <summary>
-    ///     Single multi-row insert; ON CONFLICT DO NOTHING drops duplicates on either
-    ///     unique index, matching Mongo's unordered InsertMany. Returns the duplicate count.
-    /// </summary>
-    private static async Task<int> SaveBatchCore(BoersDataDbContext context, List<StockPrice> prices,
-        CancellationToken token = default)
-    {
-        const string sql = """
-            INSERT INTO stock_price (ins_id, ticker, open, close, high, low, volume, date)
-            SELECT * FROM unnest(
-                @ins_ids::bigint[], @tickers::text[], @opens::float8[], @closes::float8[],
-                @highs::float8[], @lows::float8[], @volumes::bigint[], @dates::timestamptz[])
-            ON CONFLICT DO NOTHING
-            """;
-
-        var parameters = new object[]
-        {
-            new NpgsqlParameter("ins_ids", prices.Select(p => p.InsId).ToArray()),
-            new NpgsqlParameter("tickers", prices.Select(p => p.Ticker).ToArray()),
-            new NpgsqlParameter("opens", prices.Select(p => p.Open).ToArray()),
-            new NpgsqlParameter("closes", prices.Select(p => p.Close).ToArray()),
-            new NpgsqlParameter("highs", prices.Select(p => p.High).ToArray()),
-            new NpgsqlParameter("lows", prices.Select(p => p.Low).ToArray()),
-            new NpgsqlParameter("volumes", prices.Select(p => p.Volume).ToArray()),
-            new NpgsqlParameter("dates", prices.Select(p => AsUtc(p.Date)).ToArray())
-        };
-
-        var inserted = await context.Database.ExecuteSqlRawAsync(sql, parameters, token);
-        return prices.Count - inserted;
-    }
-
-    private static DateTime AsUtc(DateTime date) =>
-        date.Kind == DateTimeKind.Utc ? date : DateTime.SpecifyKind(date, DateTimeKind.Utc);
 
     private string MakeCacheKey(string ticker) => $"HISTORICAL-PRICE_{ticker}";
 }

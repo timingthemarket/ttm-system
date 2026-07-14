@@ -5,6 +5,7 @@ using boersdata_raw.DataAccess.Models.Report;
 using boersdata_raw.Domain.Interfaces;
 using boersdata_raw.Domain.Services;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver.Linq;
 using TTM.Shared.Models.BoersDataRaw.Reports;
 
 namespace boersdata_raw.Domain.Handlers.Sync;

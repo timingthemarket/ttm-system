@@ -11,10 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "boersdata_raw.DataAccess", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "boersdata_raw.Domain", "boersdata_raw.Domain\boersdata_raw.Domain.csproj", "{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{5E6A5C5E-D325-4536-A8A7-ED27B180CF28}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TTM.Shared", "..\TTM.Shared\TTM.Shared\TTM.Shared.csproj", "{DEB3EF56-243B-4B01-8EC9-5C21EAD44624}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,18 +33,11 @@ Global
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DEB3EF56-243B-4B01-8EC9-5C21EAD44624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DEB3EF56-243B-4B01-8EC9-5C21EAD44624}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DEB3EF56-243B-4B01-8EC9-5C21EAD44624}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DEB3EF56-243B-4B01-8EC9-5C21EAD44624}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {80F3DDC2-94B1-40C2-BF84-1B72F6FDE5F7}
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{DEB3EF56-243B-4B01-8EC9-5C21EAD44624} = {5E6A5C5E-D325-4536-A8A7-ED27B180CF28}
 	EndGlobalSection
 EndGlobal
