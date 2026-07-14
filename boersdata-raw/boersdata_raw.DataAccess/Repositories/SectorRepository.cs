@@ -1,45 +1,74 @@
-﻿using boersdata_raw.DataAccess.Interfaces;
+using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models;
-using MongoDB.Driver;
+using Marten;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public sealed class SectorRepository : ISectorRepository
 {
-    private readonly IMongoCollection<Sector> _defaultCollection;
+    private readonly IDocumentStore _store;
 
-    public SectorRepository(IMongoClient context)
+    public SectorRepository(IDocumentStore store)
     {
-        var database = context.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
-        _defaultCollection = database.GetCollection<Sector>("Sectors");
+        _store = store;
     }
 
     public async Task Delete(string name, CancellationToken token = default)
     {
-        await _defaultCollection.DeleteOneAsync(s => s.Name == name, token);
+        await using var session = _store.LightweightSession();
+        session.DeleteWhere<Sector>(s => s.Name == name);
+        await session.SaveChangesAsync(token);
     }
 
-    public async Task<bool> Save(Sector market, CancellationToken token = default)
+    public async Task<bool> Save(Sector sector, CancellationToken token = default)
     {
-        var replaced = await _defaultCollection
-            .ReplaceOneAsync(s => s.Name == market.Name, market, new ReplaceOptions { IsUpsert = true }, token);
-        return replaced.IsAcknowledged;
+        await using var session = _store.LightweightSession();
+
+        var existing = await session.Query<Sector>()
+            .FirstOrDefaultAsync(s => s.Name == sector.Name, token);
+        if (existing is not null)
+            sector.Id = existing.Id;
+
+        session.Store(sector);
+        await session.SaveChangesAsync(token);
+        return true;
     }
 
-    public async Task<long> SaveBatch(List<Sector> market, CancellationToken token = default)
+    public async Task<long> SaveBatch(List<Sector> sectors, CancellationToken token = default)
     {
-        var tasks = market.Select(s => Save(s, token)).ToArray();
-        var completedUpserts = await Task.WhenAll(tasks);
-        return completedUpserts.Sum(u => u ? 1 : 0);
+        if (sectors.Count == 0)
+            return 0;
+
+        await using var session = _store.LightweightSession();
+
+        var names = sectors.Select(s => s.Name).ToList();
+        var existing = await session.Query<Sector>()
+            .Where(s => s.Name.IsOneOf(names))
+            .ToListAsync(token);
+        var idsByName = existing.ToDictionary(s => s.Name, s => s.Id);
+
+        foreach (var sector in sectors)
+        {
+            if (idsByName.TryGetValue(sector.Name, out var id))
+                sector.Id = id;
+        }
+
+        session.Store(sectors);
+        await session.SaveChangesAsync(token);
+        return sectors.Count;
     }
 
     public async Task<Sector?> GetById(string name, CancellationToken token = default)
     {
-        return await _defaultCollection.Find(s => s.Name == name).FirstOrDefaultAsync(token);
+        await using var session = _store.QuerySession();
+        return await session.Query<Sector>()
+            .FirstOrDefaultAsync(s => s.Name == name, token);
     }
 
     public async Task<IList<Sector>> GetAll(CancellationToken token = default)
     {
-        return await _defaultCollection.Find(_ => true).ToListAsync(token);
+        await using var session = _store.QuerySession();
+        var sectors = await session.Query<Sector>().ToListAsync(token);
+        return sectors.ToList();
     }
 }

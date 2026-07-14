@@ -1,46 +1,74 @@
-﻿using boersdata_raw.DataAccess.Interfaces;
+using boersdata_raw.DataAccess.Interfaces;
 using boersdata_raw.DataAccess.Models;
-using MongoDB.Driver;
+using Marten;
 
 namespace boersdata_raw.DataAccess.Repositories;
 
 public sealed class CountryRepository : ICountryRepository
 {
-    private readonly IMongoDatabase database;
-    private readonly IMongoCollection<Country> defaultCollection;
-    
-    public CountryRepository(IMongoClient context)
+    private readonly IDocumentStore _store;
+
+    public CountryRepository(IDocumentStore store)
     {
-        database = context.GetDatabase(MongoDatabaseSettings.BoersdataDatabaseName);
-        defaultCollection = database.GetCollection<Country>("Countries");
+        _store = store;
     }
 
-    public async Task<bool> Save(Country market, CancellationToken token = default)
+    public async Task<bool> Save(Country country, CancellationToken token = default)
     {
-        var replaced = await defaultCollection
-            .ReplaceOneAsync(s => s.Name == market.Name, market, new ReplaceOptions { IsUpsert = true }, token);
-        return replaced.IsAcknowledged;
+        await using var session = _store.LightweightSession();
+
+        var existing = await session.Query<Country>()
+            .FirstOrDefaultAsync(c => c.Name == country.Name, token);
+        if (existing is not null)
+            country.Id = existing.Id;
+
+        session.Store(country);
+        await session.SaveChangesAsync(token);
+        return true;
     }
 
-    public async Task<long> SaveBatch(List<Country> market, CancellationToken token = default)
+    public async Task<long> SaveBatch(List<Country> countries, CancellationToken token = default)
     {
-        var tasks = market.Select(s => Save(s, token)).ToArray();
-        var completedUpserts = await Task.WhenAll(tasks);
-        return completedUpserts.Sum(u => u ? 1 : 0);
+        if (countries.Count == 0)
+            return 0;
+
+        await using var session = _store.LightweightSession();
+
+        var names = countries.Select(c => c.Name).ToList();
+        var existing = await session.Query<Country>()
+            .Where(c => c.Name.IsOneOf(names))
+            .ToListAsync(token);
+        var idsByName = existing.ToDictionary(c => c.Name, c => c.Id);
+
+        foreach (var country in countries)
+        {
+            if (idsByName.TryGetValue(country.Name, out var id))
+                country.Id = id;
+        }
+
+        session.Store(countries);
+        await session.SaveChangesAsync(token);
+        return countries.Count;
     }
 
     public async Task Delete(string name, CancellationToken token = default)
     {
-        await defaultCollection.DeleteOneAsync(s => s.Name == name, token);
+        await using var session = _store.LightweightSession();
+        session.DeleteWhere<Country>(c => c.Name == name);
+        await session.SaveChangesAsync(token);
     }
 
     public async Task<Country?> GetById(string name, CancellationToken token = default)
     {
-        return await defaultCollection.Find<Country>(s => s.Name == name).FirstOrDefaultAsync(token);
+        await using var session = _store.QuerySession();
+        return await session.Query<Country>()
+            .FirstOrDefaultAsync(c => c.Name == name, token);
     }
 
     public async Task<IList<Country>> GetAll(CancellationToken token = default)
     {
-        return await defaultCollection.Find(_ => true).ToListAsync(token);
+        await using var session = _store.QuerySession();
+        var countries = await session.Query<Country>().ToListAsync(token);
+        return countries.ToList();
     }
 }

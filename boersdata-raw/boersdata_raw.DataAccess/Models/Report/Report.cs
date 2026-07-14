@@ -1,6 +1,3 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace boersdata_raw.DataAccess.Models.Report;
 
 public enum ReportType
@@ -12,12 +9,12 @@ public enum ReportType
 
 public record Report
 {
-    [BsonIgnoreIfDefault] public ObjectId Id { get; set; }
+    public Guid Id { get; set; }
 
     public string Ticker { get; set; } = null!;
     public long InsId { get; set; }
 
-    [BsonRepresentation(BsonType.String)] public ReportType ReportType { get; set; }
+    public ReportType ReportType { get; set; }
 
     public int Year { get; set; }
     public int Period { get; set; }

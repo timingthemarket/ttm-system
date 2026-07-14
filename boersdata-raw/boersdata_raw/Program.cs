@@ -1,13 +1,17 @@
 using System.Text.Json;
 using boersdata_raw;
 using boersdata_raw.BackgroundServices;
+using boersdata_raw.DataAccess.Models;
+using boersdata_raw.DataAccess.Models.Report;
 using boersdata_raw.Filters;
 using boersdata_raw.gRPC.Services;
 using boersdata_raw.Scheduler;
 using Hangfire;
+using JasperFx;
+using Marten;
+using Marten.Schema;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
-using MongoDB.Driver;
 using ProtoBuf.Grpc.Server;
 using Serilog;
 using Serilog.Enrichers.Span;
@@ -21,10 +25,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 SharedSettings.AppName = nameof(boersdata_raw);
 
-var mongoClientString = Environment.GetEnvironmentVariable("MONGODB_CONN_STRING") ?? "";
-var settings = MongoClientSettings.FromConnectionString(mongoClientString);
-settings.ConnectTimeout = TimeSpan.FromSeconds(10);
-var mongoClient = new MongoClient(settings);
+var connString = Environment.GetEnvironmentVariable("POSTGRESSQL_CONN") ??
+                 throw new Exception("The environment variable 'POSTGRESSQL_CONN' was not found");
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services
@@ -33,7 +35,36 @@ builder.Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IMongoClient>(mongoClient);
+builder.Services.AddMarten(opts =>
+{
+    opts.Connection(connString);
+    //opts.DatabaseSchemaName = "boersdata";
+    opts.AutoCreateSchemaObjects = AutoCreate.CreateOrUpdate;
+
+    // Tickers are only unique within an origin (nordic vs global collections in Mongo)
+    opts.Schema.For<Security>()
+        .UniqueIndex(UniqueIndexType.Computed, "uidx_security_origin_ticker",
+            x => x.Origin, x => x.Ticker)
+        .Index(x => x.InsId);
+
+    // Dedupe guard for daily batch inserts; ticker index serves the historical reads
+    opts.Schema.For<StockPrice>()
+        .UniqueIndex(UniqueIndexType.Computed, "uidx_stock_price_ticker_date",
+            x => x.Ticker, x => x.Date)
+        .Index(x => x.InsId);
+
+    // Serves GetReports(ticker, type) and delete-by-ticker on re-sync
+    opts.Schema.For<Report>()
+        .Index(x => x.Ticker);
+
+    opts.Schema.For<Country>()
+        .UniqueIndex(UniqueIndexType.Computed, "uidx_country_name", x => x.Name);
+    opts.Schema.For<Market>()
+        .UniqueIndex(UniqueIndexType.Computed, "uidx_market_name", x => x.Name);
+    opts.Schema.For<Sector>()
+        .UniqueIndex(UniqueIndexType.Computed, "uidx_sector_name", x => x.Name);
+});
+
 builder.Services.AddHangfire(h =>
 {
     h.SetDataCompatibilityLevel(CompatibilityLevel.Version_180);
