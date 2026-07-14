@@ -53,7 +53,7 @@ public sealed class SectorRepository : ISectorRepository
                 sector.Id = id;
         }
 
-        session.Store(sectors);
+        session.Store(sectors.ToArray());
         await session.SaveChangesAsync(token);
         return sectors.Count;
     }

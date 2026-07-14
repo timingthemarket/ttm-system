@@ -46,7 +46,7 @@ public sealed class MarketRepository : IMarketRepository
                 market.Id = id;
         }
 
-        session.Store(markets);
+        session.Store(markets.ToArray());
         await session.SaveChangesAsync(token);
         return markets.Count;
     }

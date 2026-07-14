@@ -46,7 +46,7 @@ public sealed class CountryRepository : ICountryRepository
                 country.Id = id;
         }
 
-        session.Store(countries);
+        session.Store(countries.ToArray());
         await session.SaveChangesAsync(token);
         return countries.Count;
     }

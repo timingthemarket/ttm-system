@@ -48,7 +48,7 @@ public sealed class SecuritiesRepository : ISecuritiesRepository
                 item.Id = id;
         }
 
-        session.Store(security);
+        session.Store(security.ToArray());
         await session.SaveChangesAsync(token);
         return security.Count;
     }
@@ -63,7 +63,7 @@ public sealed class SecuritiesRepository : ISecuritiesRepository
         foreach (var item in security)
             item.Origin = SecurityOrigin.Global;
 
-        session.Store(security);
+        session.Store(security.ToArray());
         await session.SaveChangesAsync(token);
         return security.Count;
     }

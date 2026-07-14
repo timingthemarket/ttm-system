@@ -19,7 +19,7 @@ public class ReportRepository : IReportRepository
         session.DeleteWhere<ReportTypes>(t => true);
         await session.SaveChangesAsync(token);
 
-        session.Store(types);
+        session.Store(types.ToArray());
         await session.SaveChangesAsync(token);
     }
 
@@ -29,7 +29,7 @@ public class ReportRepository : IReportRepository
         session.DeleteWhere<Report>(r => r.Ticker == ticker);
         await session.SaveChangesAsync(token);
 
-        session.Store(reports);
+        session.Store(reports.ToArray());
         await session.SaveChangesAsync(token);
     }
 

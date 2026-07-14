@@ -1,4 +1,4 @@
-IMAGE_NAME="boersdata-raw"
+IMAGE_NAME="securities-masterdata"
 
 echo "Building $IMAGE_NAME..."
 docker build -f Dockerfile --platform linux/arm64 -t $IMAGE_NAME:latest ..

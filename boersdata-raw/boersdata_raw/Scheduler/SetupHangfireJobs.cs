@@ -50,14 +50,14 @@ public class SetupHangfireJobs
                 TimeZone = TimeZoneInfo.Utc
             });
 
-        RecurringJob.AddOrUpdate(
+        /*RecurringJob.AddOrUpdate(
             "daily-price-sync",
             () => PublishDailyPriceSyncEvent(),
             "30 21,3 * * 1-5",
             new RecurringJobOptions
             {
                 TimeZone = TimeZoneInfo.Utc
-            });
+            });*/
     }
 
     public void PublishDailyPriceSyncEvent() => _dailyPricesQueue.Enqueue(new DailyPricesQueue());

@@ -4,8 +4,6 @@
 	  <TargetFramework>net10.0</TargetFramework>
 	  <ImplicitUsings>enable</ImplicitUsings>
 	  <Nullable>enable</Nullable>
-	  <!-- Generate ready to run images during publishing to improvement cold starts. -->
-	  <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
