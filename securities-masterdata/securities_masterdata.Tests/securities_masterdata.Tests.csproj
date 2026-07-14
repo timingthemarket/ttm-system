@@ -22,7 +22,6 @@
   <ItemGroup>
     <ProjectReference Include="..\securities_masterdata.DataAccess\securities_masterdata.DataAccess.csproj" />
     <ProjectReference Include="..\securities_masterdata.Domain\securities_masterdata.Domain.csproj" />
-    <ProjectReference Include="..\securities_masterdata.Shared\securities_masterdata.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

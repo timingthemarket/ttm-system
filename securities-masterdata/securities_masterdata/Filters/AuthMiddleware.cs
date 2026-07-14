@@ -1,4 +1,3 @@
-using ttm_system.Shared.Attributes;
 
 namespace securities_masterdata.Filters;
 
@@ -17,17 +16,6 @@ public class AuthMiddleware
             return;
         }
 
-        var preLoadAttribute = endpoint.Metadata.Where(meta => meta.GetType() == typeof(TTMAuthAttribute))
-            .Select(meta => (TTMAuthAttribute)meta).FirstOrDefault();
-
-        if (preLoadAttribute == null)
-        {
-            await _next(context);
-            return;
-        }
-
-        //TODO: get user data and claims
-        //TODO: compare to the level of what the API endpoint requires
 
         await _next(context);
     }

@@ -3,7 +3,6 @@ using securities_masterdata.DataAccess.Interfaces;
 using securities_masterdata.Domain.Extensions;
 using securities_masterdata.Domain.Interfaces;
 using Skender.Stock.Indicators;
-using ttm_system.Shared.Constants;
 using TTM.Shared.Constants;
 using TTM.Shared.Models;
 using TTM.Shared.Models.SecuritiesMasterdata.Dto;
