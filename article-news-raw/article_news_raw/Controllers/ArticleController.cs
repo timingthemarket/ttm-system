@@ -13,4 +13,17 @@ public class ArticleController(FetchNewsUrlsHandler fetchNewsUrlsHandler) : Cont
         await fetchNewsUrlsHandler.FetchNewsUrls(toDate);
         return Ok();
     }
+
+    [HttpGet("trigger-url-fetch-range")]
+    public async Task<IActionResult> TriggerUrlFetchRange([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
+    {
+        var hours = new List<DateTime>();
+        for (var date = fromDate; date <= toDate; date = date.AddHours(1))
+            hours.Add(date);
+
+        foreach (var chunk in hours.Chunk(5))
+            await Task.WhenAll(chunk.Select(date => fetchNewsUrlsHandler.FetchNewsUrls(date)));
+
+        return Ok();
+    }
 }
