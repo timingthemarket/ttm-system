@@ -1,7 +1,7 @@
-IMAGE_NAME="securities_masterdata"
+IMAGE_NAME="securities-masterdata"
 
 echo "Building $IMAGE_NAME..."
-docker build -f Dockerfile -t $IMAGE_NAME:latest ..
+docker build -f Dockerfile --platform linux/arm64 -t $IMAGE_NAME:latest ..
 
 echo "Tagging $IMAGE_NAME..."
 docker tag $IMAGE_NAME:latest 192.168.68.63:5000/$IMAGE_NAME:latest

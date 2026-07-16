@@ -4,7 +4,7 @@ using securities_masterdata.DataAccess.Entities;
 using securities_masterdata.DataAccess.Interfaces;
 using securities_masterdata.Domain.Constants;
 using securities_masterdata.Domain.Interfaces;
-using ttm_system.Shared.Constants;
+using TTM.Shared.Constants;
 using TTM.Shared.Extensions;
 using TTM.Shared.Models.SecuritiesMasterdata.Dto;
 

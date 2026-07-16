@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using securities_masterdata.DataAccess.Entities;
 using securities_masterdata.DataAccess.Interfaces;
 using securities_masterdata.Domain.Interfaces;
-using ttm_system.Shared.Constants;
 using TTM.Shared.Models.SecuritiesMasterdata.Dto;
 
 namespace securities_masterdata.Domain.Handlers.Sync;

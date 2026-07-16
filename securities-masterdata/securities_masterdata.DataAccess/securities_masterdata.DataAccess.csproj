@@ -12,7 +12,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\TTM.Shared\TTM.Shared\TTM.Shared.csproj" />
-      <ProjectReference Include="..\securities_masterdata.Shared\securities_masterdata.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>

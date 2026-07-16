@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "securities_masterdata.DataA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "securities_masterdata.Domain", "securities_masterdata.Domain\securities_masterdata.Domain.csproj", "{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "securities_masterdata.Shared", "securities_masterdata.Shared\securities_masterdata.Shared.csproj", "{D2C81341-FD96-4CED-9CF6-5E374017F9B0}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{F4FC477C-426A-4D5E-9A1D-1F4BD4B06F11}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TTM.Shared", "..\TTM.Shared\TTM.Shared\TTM.Shared.csproj", "{F880A60B-4AF9-4B97-AB4E-F77B4E3BC564}"
@@ -39,10 +37,6 @@ Global
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{116F3B6C-DAAE-4F9D-95F5-46C0E3CA3488}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D2C81341-FD96-4CED-9CF6-5E374017F9B0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F880A60B-4AF9-4B97-AB4E-F77B4E3BC564}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F880A60B-4AF9-4B97-AB4E-F77B4E3BC564}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F880A60B-4AF9-4B97-AB4E-F77B4E3BC564}.Release|Any CPU.ActiveCfg = Release|Any CPU

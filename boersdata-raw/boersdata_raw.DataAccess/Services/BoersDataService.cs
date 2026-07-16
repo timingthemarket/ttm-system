@@ -111,7 +111,7 @@ public sealed class BoersDataService : IBoersDataService
         if (!instrumentIds.Any())
             throw new ArgumentException("The list of provided instrument-ids is empty", nameof(instrumentIds));
 
-        var dateFrom = DateTime.UtcNow.AddYears(-5).Date.ToString("yyyy-MM-dd");
+        var dateFrom = DateTime.UtcNow.AddYears(-3).Date.ToString("yyyy-MM-dd");
         //var dateFrom = "2017-01-01";
 
         var qryParams = new NameValueCollection { { "authKey", _apiKey } };

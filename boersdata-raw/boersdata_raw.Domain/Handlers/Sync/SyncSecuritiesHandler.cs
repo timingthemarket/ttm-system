@@ -33,6 +33,8 @@ public class SyncSecuritiesHandler(
                 updated, nordicInstruments.Count);
         }
 
+        // GLOBAL
+        /*
         var globalSecurities = MapToSecurities(globalInstruments).ToList();
         globalSecurities = FilterAwayDuplicateSecurites(globalSecurities);
 
@@ -43,6 +45,7 @@ public class SyncSecuritiesHandler(
             logger.LogInformation("Saved batch of securities [{Progress}/{Total}]",
                 updated, globalInstruments.Count);
         }
+        */
 
         logger.LogInformation("Securities sync is done. Updated {Updated} securities", updated);
     }
