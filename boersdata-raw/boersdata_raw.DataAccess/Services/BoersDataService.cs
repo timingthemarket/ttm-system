@@ -155,8 +155,8 @@ public sealed class BoersDataService : IBoersDataService
         {
             { "authKey", _apiKey },
             new NameValueCollection { { "instList", string.Join(",", instrumentIds) } },
-            new NameValueCollection { { "maxYearCount", "10" } },
-            new NameValueCollection { { "maxR12QCount", "32" } }
+            new NameValueCollection { { "maxYearCount", "5" } },
+            new NameValueCollection { { "maxR12QCount", "20" } }
         };
 
         var payload =
