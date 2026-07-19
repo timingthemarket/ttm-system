@@ -75,7 +75,10 @@ public class WeeklyRefreshPricesService(ILogger<WeeklyRefreshPricesService> logg
                         chunkActivity?.SetTag("chunk.index", chunkIndex);
                         chunkActivity?.SetTag("chunk.size", securityChunk.Length);
                         
-                        var tickers = await GetSecuritiesToPerformHistoricalRefresh(securityChunk, pricesRepository);
+                        
+                        //var tickers = await GetSecuritiesToPerformHistoricalRefresh(securityChunk, pricesRepository);
+                        // Just do all tickers
+                        var tickers = securityChunk.Select(s => s.Ticker).Distinct().ToList();
                         chunkActivity?.SetTag("tickers_to_refresh.count", tickers.Count);
 
                         if (tickers.Count > 0)
