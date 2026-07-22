@@ -100,7 +100,7 @@ builder.Logging
 builder.Services.AddCustomServices();
 
 // GRPC Clients
-var boersDataUrl = Environment.GetEnvironmentVariable("BOERSDATA_URL") ?? "http://localhost:5004";
+var boersDataUrl = Environment.GetEnvironmentVariable("BOERSDATA_URL") ?? "http://localhost:5104";
 
 GrpcClientFactory.AllowUnencryptedHttp2 = true;
 builder.Services.AddCodeFirstGrpcClient<IBackfillService>(o =>

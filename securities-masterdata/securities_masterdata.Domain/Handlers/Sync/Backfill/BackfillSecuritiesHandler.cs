@@ -21,6 +21,7 @@ public class BackfillSecuritiesHandler(
         logger.LogInformation("Starting to backfill securities...");
 
         var securitiesDto = await backfillService.BackfillSecurities();
+        logger.LogInformation("Backfilling {Count} securities done!", securitiesDto.Securities.Count);
 
         var marketsMap = MapMarkets(securitiesDto);
 
