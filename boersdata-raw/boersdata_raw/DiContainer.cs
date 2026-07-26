@@ -23,8 +23,8 @@ public static class DiContainer
         service.AddMassTransit(x =>
         {
             x.SetKebabCaseEndpointNameFormatter();
-            x.UsingInMemory();
-            /*x.UsingRabbitMq((context, cfg) =>
+            //x.UsingInMemory();
+            x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.UseConsumeFilter(typeof(ExceptionFilter<>), context);
                 
@@ -34,7 +34,7 @@ public static class DiContainer
                     h.Password("password");
                 });
                 cfg.ConfigureEndpoints(context);
-            });*/
+            });
         });
     }
 
