@@ -16,7 +16,11 @@ public class SeedExchangeRateSeries : IInitialData
             new ExchangeRateSeries { SeriesId = "SEKEURPMI", Source = "Nasdaq", ShortDescription = "EUR", GroupId = 130 },
             new ExchangeRateSeries { SeriesId = "SEKNOKPMI", Source = "Nasdaq", ShortDescription = "NOK", GroupId = 130 },
             new ExchangeRateSeries { SeriesId = "SEKDKKPMI", Source = "Nasdaq", ShortDescription = "DKK", GroupId = 130 },
-            new ExchangeRateSeries { SeriesId = "SEKUSDPMI", Source = "Nasdaq", ShortDescription = "USD", GroupId = 130 });
+            new ExchangeRateSeries { SeriesId = "SEKUSDPMI", Source = "Nasdaq", ShortDescription = "USD", GroupId = 130 },
+            new ExchangeRateSeries { SeriesId = "SEKGBPPMI", Source = "Sveriges riksbank", ShortDescription = "GBP", GroupId = 130 },
+            new ExchangeRateSeries { SeriesId = "SEKCADPMI", Source = "Sveriges riksbank", ShortDescription = "CAD", GroupId = 130 },
+            new ExchangeRateSeries { SeriesId = "SEKCHFPMI", Source = "Sveriges riksbank", ShortDescription = "CHF", GroupId = 130 },
+            new ExchangeRateSeries { SeriesId = "SEKPLNPMI", Source = "Sveriges riksbank", ShortDescription = "PLN", GroupId = 130 });
 
         await session.SaveChangesAsync(cancellation);
     }
