@@ -87,6 +87,12 @@ public class BackfillSecuritiesPricesHandler(
                 }
             }
             
+            if (historicalPrice.HistoricalPrices is null)
+            {
+                logger.LogWarning("No historical prices returned for {Ticker}", historicalPrice.Ticker);
+                continue;
+            }
+
             var securityPrices = MapSecurityPriceDto(security.SecurityId, historicalPrice.HistoricalPrices,
                 securityRates);
 
