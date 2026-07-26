@@ -59,10 +59,8 @@ public class CurrencyRepository : ICurrencyRepository
     
     public async Task WriteManyRates(List<CurrencyRate> ratesHistories)
     {
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
         _dbContext.CurrencyRates.AddRange(ratesHistories);
         await _dbContext.SaveChangesAsync();
-        await transaction.CommitAsync();
     }
 
     public async Task RemoveManyRates(long currencyIdFrom)

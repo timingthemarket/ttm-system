@@ -38,6 +38,7 @@ public static class DiContainer
             x.AddConsumer<HistoricalPricesSyncCompleteEventConsumer>();
             
             x.SetKebabCaseEndpointNameFormatter();
+            //x.UsingInMemory();
             
             x.UsingRabbitMq((context, cfg) =>
             {
