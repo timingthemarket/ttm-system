@@ -14,19 +14,19 @@ public struct SecurityPriceCache
     public long Volume { get; set; }
 }
 
+public record SecurityPriceCacheWrapper(DateTime DatePricesUpdated, List<SecurityPriceCache> Prices);
+
 
 public class SecuritiesPricesCache
 {
-    private ConcurrentDictionary<long, List<SecurityPriceCache>> SecurityPrices { get; set; } = new();
+    private ConcurrentDictionary<long, SecurityPriceCacheWrapper> SecurityPrices { get; set; } = new();
 
     public int UpdateCache(List<SecurityPrice> securityPrices)
     {
         int updates = 0;
         foreach (var pricesGroup in securityPrices.GroupBy(p => p.SecurityId))
         {
-            if (!SecurityPrices.TryRemove(pricesGroup.Key, out var exinstingPrices) && exinstingPrices != null) continue;
-            
-            SecurityPrices[pricesGroup.Key] = ToSecurityPriceCache(pricesGroup);
+            SecurityPrices[pricesGroup.Key] = new SecurityPriceCacheWrapper(DateTime.UtcNow, ToSecurityPriceCache(pricesGroup));
             updates++;
         }
 
@@ -36,11 +36,11 @@ public class SecuritiesPricesCache
     public IEnumerable<SecurityPrice> GetSecuritiyPricesHistory(long securityId,
         DateOnly? fromUtcDate = null, DateOnly? toUtcDate = null)
     {
-        if (!SecurityPrices.TryGetValue(securityId, out var prices)) return [];
+        if (!SecurityPrices.TryGetValue(securityId, out var wrapper)) return [];
 
-        if (fromUtcDate == null && toUtcDate == null) return FromSecurityPriceCache(prices);
-        
-        var pricesReturn = prices.AsEnumerable();
+        if (fromUtcDate == null && toUtcDate == null) return FromSecurityPriceCache(wrapper.Prices);
+
+        var pricesReturn = wrapper.Prices.AsEnumerable();
         if (fromUtcDate.HasValue)
             pricesReturn = pricesReturn.Where(p => p.Date >= fromUtcDate);
         
