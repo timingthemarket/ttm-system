@@ -21,6 +21,8 @@ public class SecuritiesPricesCache
 {
     private ConcurrentDictionary<long, SecurityPriceCacheWrapper> SecurityPrices { get; set; } = new();
 
+    public bool IsEmpty => SecurityPrices.IsEmpty;
+
     public int UpdateCache(List<SecurityPrice> securityPrices)
     {
         int updates = 0;

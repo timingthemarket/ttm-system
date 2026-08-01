@@ -6,36 +6,40 @@ namespace securities_masterdata.BackgroundWorkers;
 
 public class PriceCacheWorker(ILogger<PriceCacheWorker> logger, IServiceProvider serviceProvider, SecuritiesPricesCache pricesCache) : BackgroundService
 {
-    private bool _hasRunFirstTime;
-    private DateTime? LastPriceSync { get; set; }
-    
+    private static readonly DayOfWeek RunDay = DayOfWeek.Saturday;
+    private static readonly TimeSpan RunTimeUtc = new(23, 0, 0);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Yield();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!_hasRunFirstTime)
+            if (pricesCache.IsEmpty)
             {
-                logger.LogInformation("Starting up PriceCacheWorker...");
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-                _hasRunFirstTime = true;
+                logger.LogInformation("Price cache is empty, running update immediately");
+                await UpdatePricesAsync();
             }
-            
-            if (LastPriceSync == null || LastPriceSync.Value < DateTime.UtcNow.AddHours(-24))
-            {
-                try
-                {
-                    await UpdatePricesAsync();
-                }
-                finally
-                {
-                    LastPriceSync = DateTime.UtcNow;
-                }
-            }
-            
-            await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+
+            var delay = GetDelayUntilNextRun(DateTime.UtcNow);
+            logger.LogInformation("PriceCacheWorker next run at {NextRun:u}", DateTime.UtcNow + delay);
+            await Task.Delay(delay, stoppingToken);
+
+            if (stoppingToken.IsCancellationRequested) break;
+
+            await UpdatePricesAsync();
         }
+    }
+
+    internal static TimeSpan GetDelayUntilNextRun(DateTime nowUtc)
+    {
+        var nextRun = nowUtc.Date + RunTimeUtc;
+        var daysToAdd = ((int)RunDay - (int)nowUtc.DayOfWeek + 7) % 7;
+        nextRun = nextRun.AddDays(daysToAdd);
+
+        if (nextRun <= nowUtc) nextRun = nextRun.AddDays(7);
+
+        return nextRun - nowUtc;
     }
 
     private async Task UpdatePricesAsync()
