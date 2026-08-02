@@ -1,11 +1,13 @@
 using System.Text.Json;
 using article_news_raw;
 using article_news_raw.Filters;
+using article_news_raw.gRPC.Services;
 using article_news_raw.Scheduler;
 using Hangfire;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
+using ProtoBuf.Grpc.Server;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Serilog.Events;
@@ -35,10 +37,12 @@ builder.Services.AddHangfire(h =>
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<SetupHangfireJobs>();
 
-const int port = 5007;
+const int portHttp1 = 5007;
+const int portHttp2 = 5107;
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
-    options.ListenAnyIP(port, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
+    options.ListenAnyIP(portHttp1, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1; });
+    options.ListenAnyIP(portHttp2, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
 });
 
 builder.Services.AddHttpClient(Options.DefaultName);
@@ -72,6 +76,8 @@ builder.Logging
 
 builder.Services.AddCustomServices(builder.Environment);
 
+builder.Services.AddGrpc(options => { options.EnableDetailedErrors = true; });
+builder.Services.AddCodeFirstGrpc();
 
 // Builder //
 
@@ -84,6 +90,8 @@ app.UseSwaggerUI();
 // Configure the HTTP request pipeline.
 
 app.UseMiddleware<ExceptionLoggerMiddleware>();
+
+app.MapGrpcService<ArticleNewsService>();
 
 app.MapControllers();
 

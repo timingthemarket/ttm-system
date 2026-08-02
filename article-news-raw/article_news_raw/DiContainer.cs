@@ -5,6 +5,7 @@ using article_news_raw.DataAccess.Repositories;
 using article_news_raw.DataAccess.Services;
 using article_news_raw.Domain.Handlers;
 using article_news_raw.Domain.Handlers.FetchNews;
+using article_news_raw.Domain.Handlers.Query;
 using article_news_raw.Domain.Interfaces;
 using article_news_raw.Triggers;
 using MassTransit;
@@ -52,5 +53,7 @@ public static class DiContainer
         service.AddScoped<IFetchNewsUrlsHandler, FetchAlphavantageApiUrlsNewsHandler>();
 
         service.AddScoped<FetchNewsUrlsHandler>();
+
+        service.AddScoped<IQryArticleNewsSentimentHandler, QryArticleNewsSentimentHandler>();
     }
 }

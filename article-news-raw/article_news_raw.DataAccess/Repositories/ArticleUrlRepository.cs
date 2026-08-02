@@ -33,4 +33,21 @@ public class ArticleUrlRepository(IDbContextFactory<ArticleNewsDbContext> dbCont
         dbContext.ChangeTracker.Clear();
         return nrChanged;
     }
+
+    public async Task<List<ArticleTickerSentiment>> GetTickerSentiments(List<string> tickers, DateTime? from, DateTime? to, CancellationToken token = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(token);
+
+        var query = dbContext.ArticleTickerSentiments
+            .Include(t => t.ArticleUrl)
+            .Where(t => tickers.Contains(t.Ticker) && t.RelevanceScore > 0.8);
+
+        if (from.HasValue)
+            query = query.Where(t => t.ArticleUrl.DateArticlePublished >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(t => t.ArticleUrl.DateArticlePublished <= to.Value);
+
+        return await query.ToListAsync(token);
+    }
 }
