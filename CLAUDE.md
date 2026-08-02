@@ -56,7 +56,6 @@ This is an **event-driven microservices system** built on ASP.NET Core, with **M
 - **Observability**: every service wires up Serilog + OpenTelemetry via `TTM.Shared` extensions (`AddTtmTracing`, `AddTtmOtelLogger`, etc.), shipping logs to a central infra service (`INFRA_SERVICE_URL`) and traces/metrics to an OTLP collector (`OLT_ENDPOINT`).
 - **Scheduling**: background/recurring work (daily price syncs, weekly refreshes, report syncs) uses Hangfire with in-memory storage, configured per-service in a `Scheduler/` folder and wired up at startup in `Program.cs`.
 - **Databases are per-service, not shared**: most services use PostgreSQL via Entity Framework + FluentMigrator (`POSTGRESSQL_CONN`); `boersdata-raw` uses MongoDB instead; `riksbanken-raw` uses Marten (document DB on top of Postgres) rather than EF.
-- **Package feed**: services consume `TTM.Shared` as a NuGet package from a private GitHub Packages feed (see each service's `nuget.config`), not as a project reference — after changing `TTM.Shared`, it must be republished/versioned before consuming services pick it up.
 
 ### Ports (local dev, HTTP/gRPC combined via Kestrel)
 - `riksbanken-raw`: 5005

@@ -1,16 +1,26 @@
 ﻿using article_news_raw.Domain.Handlers;
+using article_news_raw.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace article_news_raw.Controllers;
 
 [Route("[controller]")]
 [Produces("application/json")]
-public class ArticleController(FetchNewsUrlsHandler fetchNewsUrlsHandler) : ControllerBase
+public class ArticleController(
+    FetchNewsUrlsHandler fetchNewsUrlsHandler,
+    IGenerateSectorSentimentReportHandler generateSectorSentimentReportHandler) : ControllerBase
 {
     [HttpGet("trigger-url-fetch")]
     public async Task<IActionResult> TriggerUrlFetch([FromQuery] DateTime toDate)
     {
         await fetchNewsUrlsHandler.FetchNewsUrls(toDate);
+        return Ok();
+    }
+
+    [HttpGet("trigger-sector-sentiment-report")]
+    public async Task<IActionResult> TriggerSectorSentimentReport()
+    {
+        await generateSectorSentimentReportHandler.GenerateAndSendReport();
         return Ok();
     }
 

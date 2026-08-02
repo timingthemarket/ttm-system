@@ -42,6 +42,8 @@ Note the Dockerfile's build context is the monorepo root (it `COPY`s `article-ne
 - `ALPHAVANTAGE_API_KEY` — required by `AlphaVantageApiNewsService`
 - `INFRA_SERVICE_URL` — central log sink (gRPC), defaults to `http://localhost:4317`
 - `OLT_ENDPOINT` — OTLP tracing collector, defaults to `http://localhost:4317`
+- `MASTERDATA_URL` — gRPC endpoint for `securities-masterdata`, used by the sector sentiment report to resolve ticker→sector; defaults to `http://localhost:5101`
+- `DISCORD_SENTIMENT_ID` / `DISCORD_SENTIMENT_TOKEN` — Discord webhook id/token the sector sentiment report posts to (throws on use if missing; distinct from portfolio's `DISCORD_ID`/`DISCORD_TOKEN`)
 
 ## Architecture Notes
 
@@ -55,6 +57,9 @@ Only implementations registered in `DiContainer.AddCustomServices` actually run;
 ### Two ways to trigger a fetch
 1. **Scheduled**: `SetupHangfireJobs` registers a recurring job (`*/10 * * * *`, UTC) that publishes a `FetchNewesUrlsTriggerEvent` via MassTransit, consumed by `FetchNewsUrlsTrigger` which calls the handler.
 2. **On-demand via HTTP**: `ArticleController` exposes `GET /article/trigger-url-fetch?toDate=` (single run) and `GET /article/trigger-url-fetch-range?fromDate=&toDate=` (hourly-chunked backfill, 5 requests in parallel per chunk) — useful for backfilling a date range.
+
+### Sector sentiment report
+`SetupHangfireJobs` also registers `"weekly-sector-sentiment-report"` (cron `0 6 * * 6`, UTC — every Saturday 06:00), publishing `GenerateSectorSentimentReportTriggerEvent`, consumed by `SectorSentimentReportTrigger`, which calls `GenerateSectorSentimentReportHandler`. That handler fetches all securities (ticker + sector) from `securities-masterdata` via the `IMasterdataService` gRPC client, queries `IQryArticleNewsSentimentHandler` for per-ticker sentiment over three independent windows (last 7/14/30 days), aggregates per sector (weighted-by-occurrence average, simple average, total occurrences, top 3 by sentiment, top 3 by occurrence count), and posts one Discord message per window via the generic `IDiscordService`/`AddTtmDiscordService` added to `TTM.Shared`. Can be triggered on demand via `GET /article/trigger-sector-sentiment-report`, bypassing Hangfire/MassTransit — useful for testing without waiting for Saturday.
 
 ### MassTransit is in-memory only
 Unlike the root `CLAUDE.md`'s general description of MassTransit + RabbitMQ, this service currently configures MassTransit with `UsingInMemory` (`DiContainer.ConfigureMasstransit`). The internal Hangfire→trigger event (`FetchNewesUrlsTriggerEvent`) and system-error publishing stay in-process; there's no cross-service event publishing wired up here yet.

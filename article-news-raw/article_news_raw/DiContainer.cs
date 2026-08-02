@@ -8,8 +8,12 @@ using article_news_raw.Domain.Handlers.FetchNews;
 using article_news_raw.Domain.Handlers.Query;
 using article_news_raw.Domain.Interfaces;
 using article_news_raw.Triggers;
+using Grpc.Core;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using ProtoBuf.Grpc.Client;
+using ProtoBuf.Grpc.ClientFactory;
+using TTM.Shared.Extensions;
 using TTM.Shared.Filters;
 
 namespace article_news_raw;
@@ -22,12 +26,13 @@ public static class DiContainer
         service.AddMassTransit(x =>
         {
             x.AddConsumer<FetchNewsUrlsTrigger>();
+            x.AddConsumer<SectorSentimentReportTrigger>();
 
             x.SetKebabCaseEndpointNameFormatter();
-            x.UsingInMemory((context, cfg) =>                                                                                                                                                                                   
-            {                                                                                                                                                                                                                   
-                cfg.ConfigureEndpoints(context);                                                                                                                                                                                
-            }); 
+            x.UsingInMemory((context, cfg) =>
+            {
+                cfg.ConfigureEndpoints(context);
+            });
         });
     }
 
@@ -55,5 +60,37 @@ public static class DiContainer
         service.AddScoped<FetchNewsUrlsHandler>();
 
         service.AddScoped<IQryArticleNewsSentimentHandler, QryArticleNewsSentimentHandler>();
+
+        // GRPC Clients
+        var masterdataUrl = Environment.GetEnvironmentVariable("MASTERDATA_URL") ?? "http://localhost:5101";
+
+        GrpcClientFactory.AllowUnencryptedHttp2 = true;
+        service.AddCodeFirstGrpcClient<TTM.Shared.gRPC.Services.IMasterdataService>(o =>
+        {
+            o.Address = new Uri(masterdataUrl);
+            o.CallOptionsActions.Add(op =>
+            {
+                op.CallOptions = new CallOptions(deadline: DateTime.UtcNow.AddSeconds(60));
+            });
+            o.ChannelOptionsActions.Add(options =>
+            {
+                options.MaxRetryAttempts = 3;
+                options.DisposeHttpClient = true;
+                options.HttpHandler = new SocketsHttpHandler()
+                {
+                    // keeps connection alive
+                    PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                    ConnectTimeout = TimeSpan.FromSeconds(30),
+                    // allows channel to add additional HTTP/2 connections
+                    EnableMultipleHttp2Connections = true
+                };
+            });
+        });
+
+        service.AddTtmDiscordService();
+
+        service.AddScoped<IGenerateSectorSentimentReportHandler, GenerateSectorSentimentReportHandler>();
     }
 }
