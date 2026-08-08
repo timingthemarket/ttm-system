@@ -111,7 +111,7 @@ public sealed class BoersDataService : IBoersDataService
         if (!instrumentIds.Any())
             throw new ArgumentException("The list of provided instrument-ids is empty", nameof(instrumentIds));
 
-        var dateFrom = DateTime.UtcNow.AddYears(-3).Date.ToString("yyyy-MM-dd");
+        var dateFrom = DateTime.UtcNow.AddYears(-15).Date.ToString("yyyy-MM-dd");
         //var dateFrom = "2017-01-01";
 
         var qryParams = new NameValueCollection { { "authKey", _apiKey } };
@@ -133,7 +133,7 @@ public sealed class BoersDataService : IBoersDataService
                 {
                     { "authKey", _apiKey },
                     { "instList", instruments },
-                    { "maxCount", "20" }
+                    { "maxCount", "30" }
                 });
         return payload;
     }
@@ -155,8 +155,8 @@ public sealed class BoersDataService : IBoersDataService
         {
             { "authKey", _apiKey },
             new NameValueCollection { { "instList", string.Join(",", instrumentIds) } },
-            new NameValueCollection { { "maxYearCount", "5" } },
-            new NameValueCollection { { "maxR12QCount", "20" } }
+            new NameValueCollection { { "maxYearCount", "13" } },
+            new NameValueCollection { { "maxR12QCount", "26" } }
         };
 
         var payload =

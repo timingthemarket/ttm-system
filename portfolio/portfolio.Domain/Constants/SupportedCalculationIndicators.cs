@@ -9,7 +9,7 @@ public static class SupportedCalculationIndicators
         Indicators.Dividend,
         Indicators.Pe,
         Indicators.Volatility,
-        //Indicators.Return, Gonna add this as always beein included
+        Indicators.Return,
         Indicators.RsiMomentum,
         Indicators.Roc,
         Indicators.Roic,
