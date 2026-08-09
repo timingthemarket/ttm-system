@@ -224,7 +224,35 @@ public class SecurityRepository(MasterdataDbContext dbContext, SecuritiesPricesC
 
         var securityIdsString = string.Join(",", securityIds);
         var sql = $"UPDATE securities SET inactive = {inactive}, updated = CURRENT_TIMESTAMP WHERE security_id IN ({securityIdsString})";
-        
+
         await dbContext.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    public async Task UpdateTradePlatforms(IReadOnlyDictionary<long, string?> tradePlatformBySecurityId)
+    {
+        if (tradePlatformBySecurityId.Count == 0) return;
+
+        // Only a handful of distinct values exist (null, "Avanza", "Nordnet", "Avanza, Nordnet"),
+        // so grouping by value keeps this to a few statements instead of one per security.
+        foreach (var platformGroup in tradePlatformBySecurityId.GroupBy(kvp => kvp.Value))
+        {
+            var tradePlatform = platformGroup.Key;
+            var inactive = tradePlatform is null;
+
+            // A literal NULL rather than a null parameter, so the driver never has to infer a type
+            var tradePlatformSql = tradePlatform is null ? "NULL" : "{0}";
+
+            foreach (var chunk in platformGroup.Select(kvp => kvp.Key).Chunk(1000))
+            {
+                var securityIdsString = string.Join(",", chunk);
+                var sql = $"UPDATE securities SET trade_platform = {tradePlatformSql}, inactive = {inactive}, " +
+                          $"updated = CURRENT_TIMESTAMP WHERE security_id IN ({securityIdsString})";
+
+                if (tradePlatform is null)
+                    await dbContext.Database.ExecuteSqlRawAsync(sql);
+                else
+                    await dbContext.Database.ExecuteSqlRawAsync(sql, tradePlatform);
+            }
+        }
     }
 }

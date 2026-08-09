@@ -1,3 +1,4 @@
+using securities_masterdata.DataAccess.Entities;
 using securities_masterdata.DataAccess.Interfaces;
 using securities_masterdata.DataAccess.Services.Models;
 using securities_masterdata.Domain.Interfaces;
@@ -8,11 +9,16 @@ namespace securities_masterdata.Domain.Handlers.Sync;
 public class AvanzaSyncHandler : IAvanzaSyncHandler
 {
     private readonly IAvanzaService _avanzaService;
+    private readonly INordnetService _nordnetService;
     private readonly ISecurityRepository _securityRepository;
 
-    public AvanzaSyncHandler(IAvanzaService avanzaService, ISecurityRepository securityRepository)
+    public AvanzaSyncHandler(
+        IAvanzaService avanzaService,
+        INordnetService nordnetService,
+        ISecurityRepository securityRepository)
     {
         _avanzaService = avanzaService;
+        _nordnetService = nordnetService;
         _securityRepository = securityRepository;
     }
 
@@ -22,49 +28,51 @@ public class AvanzaSyncHandler : IAvanzaSyncHandler
 
         try
         {
-            // Get all Avanza stocks with pagination
+            // Get all stocks from both platforms with pagination
             var avanzaStocks = await GetAllAvanzaStocks(cancellationToken);
             result.TotalAvanzaStocks = avanzaStocks.Count;
 
-            // Get all securities from database including inactive ones
+            var nordnetStocks = await GetAllNordnetStocks(cancellationToken);
+            result.TotalNordnetStocks = nordnetStocks.Count;
+
+            var avanzaMatcher = new PlatformStockMatcher(
+                avanzaStocks.Select(stock => ((string?)stock.Ticker, (string?)stock.Name)));
+            var nordnetMatcher = new PlatformStockMatcher(
+                nordnetStocks.Select(stock => ((string?)stock.Ticker, (string?)stock.Name)));
+
+            // Get all securities from database including inactive ones, so a security that
+            // reappears on a platform can be activated again
             var dbSecurities = await _securityRepository.GetAll(includeInactive: true);
             result.TotalSecuritiesInDatabase = dbSecurities.Count;
 
-            // Create HashSet of Avanza tickers for efficient lookup
-            var avanzaTickers = avanzaStocks
-                .Where(stock => !string.IsNullOrWhiteSpace(stock.Ticker))
-                .Select(stock => stock.Ticker)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var tradePlatformBySecurityId = new Dictionary<long, string?>(dbSecurities.Count);
 
-            // Create dictionary of Avanza names mapped to tickers for name-based fallback
-            var avanzaNameToTicker = avanzaStocks
-                .Where(stock => !string.IsNullOrWhiteSpace(stock.Name))
-                .Select(s => s.Name)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            // Find securities that exist in DB but not in Avanza response
-            var securitiesToMarkInactive = new List<long>();
-            
-            foreach (var security in dbSecurities.Where(s => !s.Inactive))
+            for (var i = 0; i < dbSecurities.Count; i++)
             {
-                // First check by ticker
-                if (avanzaTickers.Contains(security.Ticker))
-                    continue;
+                var security = dbSecurities[i];
 
-                // Fallback: check by name similarity
-                if (!string.IsNullOrWhiteSpace(security.Name) && 
-                    HasSimilarName(security.Name, avanzaNameToTicker))
-                    continue;
+                var onAvanza = avanzaMatcher.Matches(security.Ticker, security.Name);
+                var onNordnet = nordnetMatcher.Matches(security.Ticker, security.Name);
 
-                securitiesToMarkInactive.Add(security.SecurityId);
+                tradePlatformBySecurityId[security.SecurityId] = BuildTradePlatform(onAvanza, onNordnet);
+
+                if (onAvanza && onNordnet)
+                    result.SecuritiesOnBothPlatforms++;
+                else if (onAvanza)
+                    result.SecuritiesOnAvanzaOnly++;
+                else if (onNordnet)
+                    result.SecuritiesOnNordnetOnly++;
+
+                if (!onAvanza && !onNordnet && !security.Inactive)
+                    result.SecuritiesMarkedInactive++;
+                else if ((onAvanza || onNordnet) && security.Inactive)
+                    result.SecuritiesMarkedActive++;
+
+                if ((i + 1) % 500 == 0)
+                    Console.WriteLine($"{i + 1}/{dbSecurities.Count}");
             }
 
-            // Update inactive status
-            if (securitiesToMarkInactive.Any())
-            {
-                await _securityRepository.UpdateInactiveStatus(securitiesToMarkInactive, inactive: true);
-                result.SecuritiesMarkedInactive = securitiesToMarkInactive.Count;
-            }
+            await _securityRepository.UpdateTradePlatforms(tradePlatformBySecurityId);
 
             result.Success = true;
         }
@@ -77,17 +85,29 @@ public class AvanzaSyncHandler : IAvanzaSyncHandler
         return result;
     }
 
+    private static string? BuildTradePlatform(bool onAvanza, bool onNordnet)
+    {
+        return (onAvanza, onNordnet) switch
+        {
+            (true, true) => TradePlatforms.Avanza + TradePlatforms.Separator + TradePlatforms.Nordnet,
+            (true, false) => TradePlatforms.Avanza,
+            (false, true) => TradePlatforms.Nordnet,
+            // On neither platform, which is what an inactive security looks like
+            _ => null
+        };
+    }
+
     private async Task<List<AvanzaStock>> GetAllAvanzaStocks(CancellationToken cancellationToken)
     {
         var allStocks = new List<AvanzaStock>();
         const int pageSize = 1000;
         var offset = 0;
-        
+
         while (true)
         {
             var response = await _avanzaService.GetStocksAsync(
-                offset: offset, 
-                limit: pageSize, 
+                offset: offset,
+                limit: pageSize,
                 cancellationToken: cancellationToken);
 
             if (response?.Stocks == null || !response.Stocks.Any())
@@ -105,118 +125,35 @@ public class AvanzaSyncHandler : IAvanzaSyncHandler
         return allStocks;
     }
 
-    private static bool HasSimilarName(string securityName, HashSet<string> avanzaNames)
+    private async Task<List<NordnetInstrumentInfo>> GetAllNordnetStocks(CancellationToken cancellationToken)
     {
-        const double similarityThreshold = 0.8;
-        
-        return avanzaNames.Any(avanzaName => 
-            CalculateSimilarity(securityName, avanzaName) >= similarityThreshold);
-    }
+        var allStocks = new List<NordnetInstrumentInfo>();
+        const int pageSize = 1000;
+        var offset = 0;
 
-    private static double CalculateSimilarity(string source, string target)
-    {
-        if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(target))
-            return 0.0;
-
-        if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
-            return 1.0;
-
-        var sourceClean = CleanName(source);
-        var targetClean = CleanName(target);
-
-        if (string.Equals(sourceClean, targetClean, StringComparison.OrdinalIgnoreCase))
-            return 1.0;
-
-        var distance = LevenshteinDistance(sourceClean.ToLowerInvariant(), targetClean.ToLowerInvariant());
-        var maxLength = Math.Max(sourceClean.Length, targetClean.Length);
-        
-        return 1.0 - (double)distance / maxLength;
-    }
-
-    private static string CleanName(string cleanName)
-    {
-        var companySuffixes = new List<string>
+        while (true)
         {
-            // Limited Liability Companies
-            "Ltd",
-            "LLC",
-            "GmbH",
-            "Sàrl",
-            "BV",
-            "ApS",
-            "AS",
-            "AB",
-            "Oy",
+            var response = await _nordnetService.GetStocksAsync(
+                offset: offset,
+                limit: pageSize,
+                cancellationToken: cancellationToken);
 
-            // Public Limited Companies
-            "PLC",
-            "AG",
-            "SA",
-            "SpA",
-            "NV",
-            "A/S",
-
-            // US Corporations
-            "Inc.",
-            "Inc",
-            "Corp.",
-            "Corp",
-            "Co.",
-            "Co",
-
-            // Partnerships
-            "LLP",
-            "LP",
-
-            // Other Structures
-            "SE",
-            "SCE",
-            "REIT",
-            "SICAV"
-        };
-
-        foreach (string suffix in companySuffixes)
-        {
-            if (cleanName.EndsWith(" " + suffix, StringComparison.OrdinalIgnoreCase))
-            {
-                cleanName = cleanName.Substring(0, cleanName.Length - suffix.Length - 1).Trim();
-                break; // Stop after first match
-            }
-            else if (cleanName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-            {
-                cleanName = cleanName.Substring(0, cleanName.Length - suffix.Length).Trim();
+            if (response?.Results == null || response.Results.Length == 0)
                 break;
-            }
-        }
-        
-        return cleanName
-            .Trim();
-    }
 
-    private static int LevenshteinDistance(string source, string target)
-    {
-        if (source.Length == 0) return target.Length;
-        if (target.Length == 0) return source.Length;
+            allStocks.AddRange(response.Results.Select(instrument => instrument.InstrumentInfo));
 
-        var matrix = new int[source.Length + 1, target.Length + 1];
+            // If we got fewer results than the page size, we've reached the end
+            if (response.Results.Length < pageSize)
+                break;
 
-        for (var i = 0; i <= source.Length; i++)
-            matrix[i, 0] = i;
+            // Safety net so a full page on every request can never loop forever
+            if (response.TotalHits > 0 && allStocks.Count >= response.TotalHits)
+                break;
 
-        for (var j = 0; j <= target.Length; j++)
-            matrix[0, j] = j;
-
-        for (var i = 1; i <= source.Length; i++)
-        {
-            for (var j = 1; j <= target.Length; j++)
-            {
-                var cost = source[i - 1] == target[j - 1] ? 0 : 1;
-                matrix[i, j] = Math.Min(
-                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
-                    matrix[i - 1, j - 1] + cost);
-            }
+            offset += pageSize;
         }
 
-        return matrix[source.Length, target.Length];
+        return allStocks;
     }
 }

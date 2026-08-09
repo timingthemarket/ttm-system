@@ -39,6 +39,13 @@ public class Security
     [Column("inactive")]
     public bool Inactive { get; set; }
 
+    /// <summary>
+    /// Platforms the security is tradable on: "Avanza", "Nordnet" or "Avanza, Nordnet".
+    /// Null when it is on neither, which is the same thing as <see cref="Inactive"/>.
+    /// </summary>
+    [Column("trade_platform")]
+    public string? TradePlatform { get; set; }
+
     [Column("updated")]
     public DateTime Updated { get; set; }
 

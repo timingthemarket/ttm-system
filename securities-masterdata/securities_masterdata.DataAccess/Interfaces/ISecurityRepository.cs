@@ -20,4 +20,10 @@ public interface ISecurityRepository
     Task<List<SecurityPrice>> GetSecuritiesPricesHistoryNoCache(HashSet<long> securityIds, DateOnly? fromUtcDate = null,
         DateOnly? toUtcDate = null);
     Task UpdateInactiveStatus(List<long> securityIds, bool inactive);
+
+    /// <summary>
+    /// Sets the trade platform for each security, and derives <c>inactive</c> from it:
+    /// a null platform means the security is not tradable anywhere and is marked inactive.
+    /// </summary>
+    Task UpdateTradePlatforms(IReadOnlyDictionary<long, string?> tradePlatformBySecurityId);
 }
