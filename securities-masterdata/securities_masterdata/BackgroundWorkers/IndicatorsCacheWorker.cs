@@ -54,7 +54,7 @@ public class IndicatorsCacheWorker(ILogger<IndicatorsCacheWorker> logger, IServi
         var processed = 0;
         foreach (var ids in securities.Select(s => s.SecurityId).Chunk(50))
         {
-            var maxDatePast = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
+            var maxDatePast = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-15));
             var indicators = await GetIndicatorsHistoryNoCache(indicatorsRepository, ids.ToHashSet(), maxDatePast);
 
             processed += indicatorsCache.UpdateCache(indicators);

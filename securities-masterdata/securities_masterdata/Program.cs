@@ -40,7 +40,7 @@ builder.Services.AddDbContext<MasterdataDbContext>(options =>
 
 if (builder.Environment.IsProduction())
 {
-    builder.Services.AddHostedService<PriceCacheWorker>();
+    //builder.Services.AddHostedService<PriceCacheWorker>();
     builder.Services.AddHostedService<IndicatorsCacheWorker>();
 }
 
