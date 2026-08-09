@@ -51,10 +51,10 @@ builder.WebHost.UseKestrel((context, options) =>
 var isProd = builder.Environment.IsProduction();
 if (isProd)
 {
-    builder.Services.AddHostedService<SimulationService>();
-    builder.Services.AddHostedService<PortfolioOutcomeViewRefreshBackgroundService>();
-    builder.Services.AddHostedService<HistoricalExplorerBackgroundService>();
-    builder.Services.AddHostedService<PortfolioTrendsBackgroundService>();
+    //builder.Services.AddHostedService<SimulationService>();
+    //builder.Services.AddHostedService<PortfolioOutcomeViewRefreshBackgroundService>();
+    //builder.Services.AddHostedService<HistoricalExplorerBackgroundService>();
+    //builder.Services.AddHostedService<PortfolioTrendsBackgroundService>();
 }
 
 builder.Services.AddHealthChecks();

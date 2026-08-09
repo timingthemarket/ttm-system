@@ -75,7 +75,8 @@ public static class DiContainer
             });
         });
 
-        //Database 
+        //Database
+        service.AddScoped<IIndicatorStrengthRepository, IndicatorStrengthRepository>();
         service.AddScoped<IPortfolioRepository, PortfolioRepository>();
         service.AddScoped<IPortfolioTrendsRepository, PortfolioTrendsRepository>();
         service.AddScoped<ISimulationRepository, SimulationRepository>();
@@ -96,6 +97,7 @@ public static class DiContainer
         service.AddScoped<IPortfolioExplorerNotificationService, PortfolioExplorerNotificationService>();
 
         //Handler
+        service.AddScoped<IIndicatorStrengthHandler, IndicatorStrengthHandler>();
         service.AddScoped<IComputePortfolioHandler, ComputePortfolioHandler>();
         service.AddScoped<IRegisterSimulationHandler, RegisterSimulationHandler>();
         service.AddScoped<IProcessSimulationHandler, ProcessSimulationHandler>();

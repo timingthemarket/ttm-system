@@ -90,6 +90,25 @@ ILogger explorerLogger = loggerFactory.CreateLogger("PortfolioExplorer");
 var tracerProvider = serviceProvider.GetRequiredService<TracerProvider>();
 explorerLogger.LogInformation("TracerProvider initialized: {TracerProvider}", tracerProvider.GetType().Name);
 
+// Alternative run mode: score each supported indicator on its own instead of searching indicator
+// combinations. One shot - it runs the backtest and exits, which is what the monthly schedule needs.
+// This has to come before INDICATOR_SEARCH_STRATEGY is parsed, since that throws on unknown values.
+var explorerMode = Environment.GetEnvironmentVariable("EXPLORER_MODE") ?? "Search";
+if (explorerMode == "IndicatorStrength")
+{
+    int backfillYears = int.Parse(Environment.GetEnvironmentVariable("STRENGTH_BACKFILL_YEARS") ?? "12");
+    explorerLogger.LogInformation("Running in IndicatorStrength mode with a {BackfillYears} year backfill",
+        backfillYears);
+
+    using IServiceScope strengthScope = serviceProvider.CreateScope();
+    var indicatorStrengthHandler = strengthScope.ServiceProvider.GetRequiredService<IIndicatorStrengthHandler>();
+    await indicatorStrengthHandler.ProcessIndicatorStrength(DateOnly.FromDateTime(DateTime.UtcNow), backfillYears);
+
+    explorerLogger.LogInformation("Indicator strength processing complete. Exiting.");
+    await Log.CloseAndFlushAsync();
+    return;
+}
+
 // Production-ready configuration
 int maxIterations = int.Parse(Environment.GetEnvironmentVariable("MAX_ITERATIONS") ?? "1000");
 int waitSecondsOnNoSession = int.Parse(Environment.GetEnvironmentVariable("WAIT_SECONDS_NO_SESSION") ?? "30");

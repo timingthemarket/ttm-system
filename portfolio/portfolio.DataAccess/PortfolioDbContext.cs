@@ -79,6 +79,7 @@ public class PortfolioDbContext : DbContext
         });
     }
 
+    public virtual DbSet<IndicatorStrength> IndicatorStrengths { get; set; }
     public virtual DbSet<Portfolio> Portfolios { get; set; }
     public virtual DbSet<PortfolioIndicator> PortfolioIndicators { get; set; }
     public virtual DbSet<PortfolioTrends> PortfolioTrends { get; set; }

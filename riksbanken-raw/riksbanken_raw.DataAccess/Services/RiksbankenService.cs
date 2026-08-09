@@ -8,7 +8,7 @@ namespace riksbanken_raw.DataAccess.Services;
 public class RiksbankenService : IRiksbankenService
 {
     private const string BaseApiUrl = "https://api.riksbank.se/swea/v1/";
-    private const string FromDateHistorical = "2015-01-01";
+    private const string FromDateHistorical = "2010-01-01";
 
     private readonly string _apiKey;
     private readonly HttpClient _client;
