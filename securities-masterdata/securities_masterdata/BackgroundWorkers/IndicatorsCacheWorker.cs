@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using securities_masterdata.DataAccess.Cache;
 using securities_masterdata.DataAccess.Interfaces;
+using TTM.Shared.Constants;
 
 namespace securities_masterdata.BackgroundWorkers;
 
@@ -54,7 +55,7 @@ public class IndicatorsCacheWorker(ILogger<IndicatorsCacheWorker> logger, IServi
         var processed = 0;
         foreach (var ids in securities.Select(s => s.SecurityId).Chunk(50))
         {
-            var maxDatePast = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-15));
+            var maxDatePast = DateOnly.FromDateTime(DateTime.UtcNow);
             var indicators = await GetIndicatorsHistoryNoCache(indicatorsRepository, ids.ToHashSet(), maxDatePast);
 
             processed += indicatorsCache.UpdateCache(indicators);
@@ -68,12 +69,10 @@ public class IndicatorsCacheWorker(ILogger<IndicatorsCacheWorker> logger, IServi
 
     private async Task<List<DataAccess.Entities.Indicator>> GetIndicatorsHistoryNoCache(IIndicatorsRepository repository, HashSet<long> securityIds, DateOnly fromDate)
     {
-        // Since IndicatorsRepository doesn't have a direct method to get all indicators by security IDs and date range,
-        // we'll need to use the existing GetIndicatorsByDate method with all indicator types
-        var allIndicatorIds = Enum.GetValues<TTM.Shared.Constants.Indicators>()
-            .Select(i => (long)i)
+        var allIndicatorIds = IndicatorStrengthSets.Sets.Select(s => s.Indicator)
+            .Select(i => (long)i).Distinct()
             .ToHashSet();
 
-        return await repository.GetIndicatorsByDate(fromDate, allIndicatorIds, securityIds);
+        return await repository.GetIndicatorsByDate(fromDate, allIndicatorIds, securityIds, false);
     }
 }

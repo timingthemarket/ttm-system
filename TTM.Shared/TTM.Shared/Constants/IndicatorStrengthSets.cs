@@ -1,7 +1,6 @@
-using TTM.Shared.Constants;
 using TTM.Shared.Models;
 
-namespace portfolio.Domain.Constants;
+namespace TTM.Shared.Constants;
 
 /// <summary>
 /// One indicator evaluated in one direction. Indicators that are meaningful both when high

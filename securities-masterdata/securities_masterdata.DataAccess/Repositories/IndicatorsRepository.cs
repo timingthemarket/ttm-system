@@ -10,23 +10,26 @@ namespace securities_masterdata.DataAccess.Repositories;
 public class IndicatorsRepository(MasterdataDbContext dbContext, IMemoryCache cache, IndicatorsCache indicatorsCache) : IIndicatorsRepository
 {
     public async Task<List<Indicator>> GetIndicatorsByDate(DateOnly date, HashSet<long> indicatorsIds,
-        HashSet<long>? securityIds = null)
+        HashSet<long>? securityIds = null, bool useCache = true)
     {
         // Try to get data from cache first
-        var cachedData = indicatorsCache.GetIndicatorsByDate(date, indicatorsIds, securityIds).ToList();
-        
-        if (cachedData.Any())
+        if (useCache)
         {
-            // Filter cached data to get the latest indicators by date for each security
-            var filteredCachedData = cachedData
-                .Where(i => i.Date <= date)
-                .GroupBy(i => i.SecurityId)
-                .Select(group => group.OrderByDescending(i => i.Date).First())
-                .ToList();
-
-            if (filteredCachedData.Any())
+            var cachedData = indicatorsCache.GetIndicatorsByDate(date, indicatorsIds, securityIds).ToList();
+        
+            if (cachedData.Any())
             {
-                return filteredCachedData;
+                // Filter cached data to get the latest indicators by date for each security
+                var filteredCachedData = cachedData
+                    .Where(i => i.Date <= date)
+                    .GroupBy(i => i.SecurityId)
+                    .Select(group => group.OrderByDescending(i => i.Date).First())
+                    .ToList();
+
+                if (filteredCachedData.Any())
+                {
+                    return filteredCachedData;
+                }
             }
         }
 

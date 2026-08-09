@@ -38,9 +38,9 @@ public static class DiContainer
             x.AddConsumer<HistoricalPricesSyncCompleteEventConsumer>();
             
             x.SetKebabCaseEndpointNameFormatter();
-            x.UsingInMemory();
+            //x.UsingInMemory();
             
-            /*x.UsingRabbitMq((context, cfg) =>
+            x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.UseConsumeFilter(typeof(ExceptionFilter<>), context);
 
@@ -53,7 +53,7 @@ public static class DiContainer
                 });
                 
                 cfg.ConfigureEndpoints(context);
-            });*/
+            });
         });
     }
 

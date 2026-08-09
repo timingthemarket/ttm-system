@@ -9,7 +9,7 @@ COPY ["TTM.Shared/TTM.Shared/TTM.Shared.csproj", "TTM.Shared/TTM.Shared/TTM.Shar
 #RUN dotnet restore securities_masterdata/securities_masterdata.csproj
 COPY . .
 
-RUN dotnet publish securities-masterdata/securities_masterdata/securities_masterdata.csproj -c Release -o /app/publish --os linux
+RUN dotnet publish securities-masterdata/securities_masterdata/securities_masterdata.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 

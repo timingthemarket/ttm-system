@@ -7,7 +7,7 @@ public interface IIndicatorsRepository
 {
     Task UpdateAndReplaceAllIndicators(long securityId, List<Indicator> indicators, bool resetTracker = false);
     Task<List<Indicator>> GetIndicatorsByDate(DateOnly date, HashSet<long> indicatorsId,
-        HashSet<long>? securityIds = null);
+        HashSet<long>? securityIds = null, bool useCache = true);
 
     Task<List<Indicator>> GetAggregatedIndicatorByDate(DateOnly date, Indicators indicatorId, Aggregator aggregator);
 }
