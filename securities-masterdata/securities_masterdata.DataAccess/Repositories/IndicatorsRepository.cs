@@ -75,7 +75,7 @@ public class IndicatorsRepository(MasterdataDbContext dbContext, IMemoryCache ca
             return indicatorsCache;
         
         var dataList = await dbContext.Indicators
-            .Where(i => i.IndicatorId == indicatorId && i.Date >= date)
+            .Where(i => i.IndicatorId == indicatorId && i.Date <= date)
             .ToListAsync();
         var data = dataList.GroupBy(i => i.SecurityId);
 

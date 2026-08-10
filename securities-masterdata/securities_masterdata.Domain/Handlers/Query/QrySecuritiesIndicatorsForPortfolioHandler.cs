@@ -30,7 +30,7 @@ public class QrySecuritiesIndicatorsForPortfolioHandler(
 
         // Market value limit is 10 000 000 000 SEK
         // TODO: make this into a variable to be sent in
-        var securities = await GetFilteredSecurities(date, 10_000_000_000, 30_000, 30);
+        var securities = await GetFilteredSecurities(1_000_000_000, 20_000, 30);
         //logger.LogInformation("Got {Count} securities from filtering on limit", securities.Count);
 
         var securityIds = securities.Select(s => s.SecurityId).ToHashSet();
@@ -70,21 +70,26 @@ public class QrySecuritiesIndicatorsForPortfolioHandler(
         return indicatorsDtos;
     }
     
-    private async Task<List<Security>> GetFilteredSecurities(DateOnly date, decimal marketValueLimit, double volumeLimit, double minimumSekSharePrice)
+    /// <summary>
+    /// Get securities that meet the requirements from TODAYs trading volume and value
+    /// </summary>
+    private async Task<List<Security>> GetFilteredSecurities(decimal marketValueLimit, double volumeLimit, double minimumSekSharePrice)
     {
-        var cacheKey = $"filteredsecurities-{date}-{marketValueLimit}-{volumeLimit}";
-        if (memoryCache.TryGetValue(cacheKey, out List<Security>? result) && result is not null)
+        var todayDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        
+        var cacheKey = $"filteredsecurities-{marketValueLimit}-{volumeLimit}";
+        if (memoryCache.TryGetValue(cacheKey, out List<Security>? result) && result is not null && result.Count > 0)
             return result;
         
         var nrSharesSecurities =
-            await indicatorsRepository.GetIndicatorsByDate(date,
+            await indicatorsRepository.GetIndicatorsByDate(todayDate,
                 new HashSet<long> { (long)Indicators.NumberOfShares });
-        var latestPricesByDate = (await securityRepository.GetSecuritiesPricesByDate(date, null))
+        var latestPricesByDate = (await securityRepository.GetSecuritiesPricesByDate(todayDate, null))
             .ToDictionary(p => p.SecurityId);
-
-        var fromDate = date.AddDays(-30);
+        
+        var fromDate = todayDate.AddDays(-30);
         var volumeSecurities = (await securityRepository.GetSecurityIdsByAverageVolume(volumeLimit, fromDate,
-            date)).ToHashSet();
+            todayDate)).ToHashSet();
 
         var filteredSecurityIds = new List<long>();
         foreach (var nrSecurityShares in nrSharesSecurities)
