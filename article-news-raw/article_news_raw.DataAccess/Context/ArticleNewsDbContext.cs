@@ -7,6 +7,7 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
 {
     public DbSet<ArticleUrl> ArticleUrls => Set<ArticleUrl>();
     public DbSet<ArticleTickerSentiment> ArticleTickerSentiments => Set<ArticleTickerSentiment>();
+    public DbSet<Commodity> Commodities => Set<Commodity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +75,25 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
                 .WithMany(u => u.TickerSentiments)
                 .HasForeignKey(e => e.ArticleUrlId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Commodity>(entity =>
+        {
+            entity.ToTable("commodities");
+
+            entity.HasKey(e => new { e.Date, e.CommodityType });
+
+            entity.Property(e => e.Date)
+                .HasColumnName("date");
+
+            entity.Property(e => e.CommodityType)
+                .HasColumnName("commodity_type")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Value)
+                .HasColumnName("value")
+                .IsRequired();
         });
 
         base.OnModelCreating(modelBuilder);

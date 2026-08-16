@@ -4,6 +4,7 @@ using article_news_raw.DataAccess.Interfaces;
 using article_news_raw.DataAccess.Repositories;
 using article_news_raw.DataAccess.Services;
 using article_news_raw.Domain.Handlers;
+using article_news_raw.Domain.Handlers.FetchMarketData;
 using article_news_raw.Domain.Handlers.FetchNews;
 using article_news_raw.Domain.Handlers.Query;
 using article_news_raw.Domain.Interfaces;
@@ -27,6 +28,7 @@ public static class DiContainer
         service.AddMassTransit(x =>
         {
             x.AddConsumer<FetchNewsUrlsTrigger>();
+            x.AddConsumer<FetchMarketDataTrigger>();
             x.AddConsumer<SectorSentimentReportTrigger>();
 
             x.SetKebabCaseEndpointNameFormatter();
@@ -47,6 +49,7 @@ public static class DiContainer
                                ?? throw new Exception("POSTGRESSQL_CONN is null");
         service.AddDbContextFactory<ArticleNewsDbContext>(options => options.UseNpgsql(connectionString));
         service.AddScoped<IArticleUrlRepository, ArticleUrlRepository>();
+        service.AddScoped<ICommodityRepository, CommodityRepository>();
 
         service.AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -66,6 +69,11 @@ public static class DiContainer
         service.AddScoped<IFetchNewsUrlsHandler, FetchAlphavantageApiUrlsNewsHandler>();
 
         service.AddScoped<FetchNewsUrlsHandler>();
+
+        // Market data sources - add new IFetchMarketDataHandler implementations here.
+        service.AddScoped<IFetchMarketDataHandler, FetchCommoditiesHandler>();
+
+        service.AddScoped<FetchMarketDataHandler>();
 
         service.AddScoped<IQryArticleNewsSentimentHandler, QryArticleNewsSentimentHandler>();
 

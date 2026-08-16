@@ -33,6 +33,16 @@ public class SetupHangfireJobs
             });
 
         RecurringJob.AddOrUpdate(
+            "weekly-market-data-sync",
+            () => PublishFetchMarketDataEvent(),
+            "0 5 * * 1", // Mondays 05:00 UTC
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc,
+                MisfireHandling = MisfireHandlingMode.Strict
+            });
+
+        RecurringJob.AddOrUpdate(
             "weekly-sector-sentiment-report",
             () => PublishGenerateSectorSentimentReportEvent(),
             "0 6 * * 6",
@@ -44,6 +54,8 @@ public class SetupHangfireJobs
     }
 
     public async Task PublishFetchNewesUrlsEvent() => await _publishEndpoint.Publish(new FetchNewesUrlsTriggerEvent());
+
+    public async Task PublishFetchMarketDataEvent() => await _publishEndpoint.Publish(new FetchMarketDataTriggerEvent());
 
     public async Task PublishGenerateSectorSentimentReportEvent() =>
         await _publishEndpoint.Publish(new GenerateSectorSentimentReportTriggerEvent());
