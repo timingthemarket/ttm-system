@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using portfolio.DataAccess.Models.Db;
 using portfolio.Domain.Constants;
 using portfolio.Domain.Utils;
 using TTM.Shared.Constants;
@@ -261,6 +262,23 @@ public class StrengthStatisticsTests
         StrengthStatistics.Strength(1, 1).Should().BeApproximately(maximum, 1e-9);
         StrengthStatistics.Strength(1, 0).Should().BeApproximately(StrengthStatistics.SharpeWeight, 1e-9);
         StrengthStatistics.Strength(0, 1).Should().BeApproximately(StrengthStatistics.IcWeight, 1e-9);
+    }
+}
+
+public class IndicatorStrengthMetadataTests
+{
+    [Fact]
+    public void ToJson_Should_Write_Camel_Cased_Raw_Values()
+    {
+        new IndicatorStrengthMetadata(1.25, 0.04).ToJson()
+            .Should().Be("{\"sharpe\":1.25,\"ic\":0.04}");
+    }
+
+    [Fact]
+    public void ToJson_Should_Keep_A_Missing_Ic_Explicit()
+    {
+        new IndicatorStrengthMetadata(1.25, null).ToJson()
+            .Should().Be("{\"sharpe\":1.25,\"ic\":null}");
     }
 }
 

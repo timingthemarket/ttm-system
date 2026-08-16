@@ -313,7 +313,10 @@ public class IndicatorStrengthHandler(
                 Date = date,
                 Strength = StrengthStatistics.Strength(
                     StrengthStatistics.Normalize(s.Sharpe, minSharpe, maxSharpe),
-                    s.MeanIc.HasValue ? StrengthStatistics.Normalize(s.MeanIc.Value, minIc, maxIc) : 0.5)
+                    s.MeanIc.HasValue ? StrengthStatistics.Normalize(s.MeanIc.Value, minIc, maxIc) : 0.5),
+                // The un-normalized inputs, so a strength value can be read back against the raw
+                // numbers it came from rather than only against its peers at this date.
+                Metadata = new IndicatorStrengthMetadata(s.Sharpe, s.MeanIc).ToJson()
             })
             .ToList();
     }

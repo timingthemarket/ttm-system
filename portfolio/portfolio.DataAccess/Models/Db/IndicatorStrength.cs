@@ -20,4 +20,11 @@ public class IndicatorStrength
     [Column("date")] public DateOnly Date { get; set; }
 
     [Column("strength")] public double Strength { get; set; }
+
+    /// <summary>
+    /// <see cref="IndicatorStrengthMetadata"/> as JSON: the raw Sharpe ratio and mean Information
+    /// Coefficient this row's strength was derived from. Null for rows written before the column
+    /// existed.
+    /// </summary>
+    [Column("metadata")] public string? Metadata { get; set; }
 }
