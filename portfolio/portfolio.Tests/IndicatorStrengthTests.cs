@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
-using portfolio.DataAccess.Models.Db;
 using portfolio.Domain.Constants;
 using portfolio.Domain.Utils;
 using TTM.Shared.Constants;
@@ -236,50 +235,6 @@ public class StrengthStatisticsTests
         StrengthStatistics.RollingWindow(observations, 0).Should().BeEmpty();
     }
 
-    [Fact]
-    public void Normalize_Should_Return_The_Neutral_Midpoint_When_Every_Value_Is_Equal()
-    {
-        var value = StrengthStatistics.Normalize(1.5, 1.5, 1.5);
-
-        value.Should().Be(0.5);
-        double.IsNaN(value).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Normalize_Should_Map_The_Extremes_To_Zero_And_One()
-    {
-        StrengthStatistics.Normalize(-2, -2, 3).Should().Be(0);
-        StrengthStatistics.Normalize(3, -2, 3).Should().Be(1);
-        StrengthStatistics.Normalize(0.5, -2, 3).Should().BeApproximately(0.5, 1e-9);
-    }
-
-    [Fact]
-    public void Strength_Should_Stay_Within_Zero_And_The_Sum_Of_The_Weights()
-    {
-        var maximum = StrengthStatistics.SharpeWeight + StrengthStatistics.IcWeight;
-
-        StrengthStatistics.Strength(0, 0).Should().Be(0);
-        StrengthStatistics.Strength(1, 1).Should().BeApproximately(maximum, 1e-9);
-        StrengthStatistics.Strength(1, 0).Should().BeApproximately(StrengthStatistics.SharpeWeight, 1e-9);
-        StrengthStatistics.Strength(0, 1).Should().BeApproximately(StrengthStatistics.IcWeight, 1e-9);
-    }
-}
-
-public class IndicatorStrengthMetadataTests
-{
-    [Fact]
-    public void ToJson_Should_Write_Camel_Cased_Raw_Values()
-    {
-        new IndicatorStrengthMetadata(1.25, 0.04).ToJson()
-            .Should().Be("{\"sharpe\":1.25,\"ic\":0.04}");
-    }
-
-    [Fact]
-    public void ToJson_Should_Keep_A_Missing_Ic_Explicit()
-    {
-        new IndicatorStrengthMetadata(1.25, null).ToJson()
-            .Should().Be("{\"sharpe\":1.25,\"ic\":null}");
-    }
 }
 
 public class IndicatorStrengthSetsTests

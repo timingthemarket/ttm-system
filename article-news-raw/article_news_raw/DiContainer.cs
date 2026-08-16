@@ -8,6 +8,7 @@ using article_news_raw.Domain.Handlers.FetchNews;
 using article_news_raw.Domain.Handlers.Query;
 using article_news_raw.Domain.Interfaces;
 using article_news_raw.Triggers;
+using FluentMigrator.Runner;
 using Grpc.Core;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -47,9 +48,16 @@ public static class DiContainer
         service.AddDbContextFactory<ArticleNewsDbContext>(options => options.UseNpgsql(connectionString));
         service.AddScoped<IArticleUrlRepository, ArticleUrlRepository>();
 
+        service.AddFluentMigratorCore()
+            .ConfigureRunner(rb => rb
+                .AddPostgres()
+                .WithGlobalConnectionString(connectionString)
+                .ScanIn(typeof(DiContainer).Assembly).For.Migrations());
+
         // Services
         service.AddScoped<IFinnhubApiNewsService, FinnhubApiNewsService>();
         service.AddScoped<IAlphaVantageApiNewsService, AlphaVantageApiNewsService>();
+        service.AddScoped<IAlphaVantageCommoditiesService, AlphaVantageCommoditiesService>();
 
 
         //service.AddScoped<IFetchNewsHandler, FetchWebNewsArticlesHandler>();

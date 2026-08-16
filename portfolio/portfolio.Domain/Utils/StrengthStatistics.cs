@@ -20,9 +20,6 @@ public static class StrengthStatistics
     /// <summary>Number of monthly periods in a year, used to annualise the Sharpe ratio.</summary>
     public const int PeriodsPerYear = 12;
 
-    public const double SharpeWeight = 0.5;
-    public const double IcWeight = 0.3;
-
     /// <summary>
     /// A constant return series does not produce an exactly zero standard deviation - floating
     /// point noise around 1e-18 survives, which would turn into an astronomical Sharpe ratio.
@@ -82,18 +79,4 @@ public static class StrengthStatistics
 
         return window;
     }
-
-    /// <summary>
-    /// Min-max rescale to [0,1] across the values of a single rebalance date. When every value is
-    /// identical there is no spread to rank on, so all of them score the neutral midpoint rather
-    /// than dividing by zero.
-    /// </summary>
-    public static double Normalize(double value, double min, double max) =>
-        max > min ? Functions.Normalize01(value, min, max) : 0.5;
-
-    /// <summary>
-    /// Strength = 0.5 x normalized Sharpe + 0.3 x normalized IC. Range [0, 0.8].
-    /// </summary>
-    public static double Strength(double normalizedSharpe, double normalizedIc) =>
-        SharpeWeight * normalizedSharpe + IcWeight * normalizedIc;
 }

@@ -19,12 +19,14 @@ public class IndicatorStrength
 
     [Column("date")] public DateOnly Date { get; set; }
 
-    [Column("strength")] public double Strength { get; set; }
+    /// <summary>
+    /// Annualised rolling Sharpe ratio of the artificial portfolio built from this indicator.
+    /// </summary>
+    [Column("sharpe_ratio")] public double SharpeRatio { get; set; }
 
     /// <summary>
-    /// <see cref="IndicatorStrengthMetadata"/> as JSON: the raw Sharpe ratio and mean Information
-    /// Coefficient this row's strength was derived from. Null for rows written before the column
-    /// existed.
+    /// Mean Information Coefficient over the same rolling window, or null when no period in the
+    /// window produced one.
     /// </summary>
-    [Column("metadata")] public string? Metadata { get; set; }
+    [Column("ic")] public double? Ic { get; set; }
 }

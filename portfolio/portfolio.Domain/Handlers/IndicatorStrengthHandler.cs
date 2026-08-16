@@ -20,8 +20,7 @@ namespace portfolio.Domain.Handlers;
 /// every sector, ranked by that indicator in its configured direction. The portfolio's realised
 /// return over the following month feeds a rolling Sharpe ratio; the rank correlation between the
 /// indicator's scores and the following month's returns across the whole eligible universe feeds a
-/// rolling mean Information Coefficient. Both are normalized across indicators at each date and
-/// combined into a single strength value.
+/// rolling mean Information Coefficient. Both are stored raw, one row per set per date.
 ///
 /// The table this writes to is created by the migration in the portfolio API project, which is the
 /// only project that runs FluentMigrator - the API must have started at least once before this runs.
@@ -267,8 +266,9 @@ public class IndicatorStrengthHandler(
     }
 
     /// <summary>
-    /// Rolling Sharpe and mean IC per set, min-max normalized against each other at this date and
-    /// combined into the strength metric.
+    /// The rolling Sharpe ratio and mean IC per set at this date. A set without a Sharpe ratio has
+    /// too little history to be scored at all and is skipped; a missing IC only leaves that column
+    /// null.
     /// </summary>
     private List<IndicatorStrength> BuildStrengths(
         IReadOnlyList<IndicatorStrengthSet> sets,
@@ -277,7 +277,8 @@ public class IndicatorStrengthHandler(
         IReadOnlyDictionary<string, double?[]> returnObservations,
         IReadOnlyDictionary<string, double?[]> icObservations)
     {
-        var scored = new List<ScoredSet>();
+        var strengths = new List<IndicatorStrength>();
+        var missingIc = 0;
 
         foreach (IndicatorStrengthSet set in sets)
         {
@@ -287,38 +288,24 @@ public class IndicatorStrengthHandler(
 
             List<double> ics = StrengthStatistics.RollingWindow(icObservations[set.Key], dateIndex);
             double? meanIc = ics.Count > 0 ? ics.Average() : null;
+            if (meanIc == null) missingIc++;
 
-            scored.Add(new ScoredSet(set, sharpe.Value, meanIc));
+            strengths.Add(new IndicatorStrength
+            {
+                IndicatorId = set.Indicator,
+                Direction = set.Direction,
+                Date = date,
+                SharpeRatio = sharpe.Value,
+                Ic = meanIc
+            });
         }
 
-        if (scored.Count == 0) return new List<IndicatorStrength>();
-
-        var minSharpe = scored.Min(s => s.Sharpe);
-        var maxSharpe = scored.Max(s => s.Sharpe);
-
-        List<ScoredSet> withIc = scored.Where(s => s.MeanIc.HasValue).ToList();
-        var minIc = withIc.Count > 0 ? withIc.Min(s => s.MeanIc!.Value) : 0;
-        var maxIc = withIc.Count > 0 ? withIc.Max(s => s.MeanIc!.Value) : 0;
-
-        if (withIc.Count < scored.Count)
+        if (missingIc > 0)
             logger.LogWarning(
-                "{MissingCount}/{TotalCount} indicator sets had no Information Coefficient at {Date}; they are scored on Sharpe with a neutral IC.",
-                scored.Count - withIc.Count, scored.Count, date);
+                "{MissingCount}/{TotalCount} indicator sets had no Information Coefficient at {Date}; their ic is left null.",
+                missingIc, strengths.Count, date);
 
-        return scored
-            .Select(s => new IndicatorStrength
-            {
-                IndicatorId = s.Set.Indicator,
-                Direction = s.Set.Direction,
-                Date = date,
-                Strength = StrengthStatistics.Strength(
-                    StrengthStatistics.Normalize(s.Sharpe, minSharpe, maxSharpe),
-                    s.MeanIc.HasValue ? StrengthStatistics.Normalize(s.MeanIc.Value, minIc, maxIc) : 0.5),
-                // The un-normalized inputs, so a strength value can be read back against the raw
-                // numbers it came from rather than only against its peers at this date.
-                Metadata = new IndicatorStrengthMetadata(s.Sharpe, s.MeanIc).ToJson()
-            })
-            .ToList();
+        return strengths;
     }
 
     private sealed record DateSnapshot(
@@ -329,6 +316,4 @@ public class IndicatorStrengthHandler(
     private sealed record Candidate(string Sector, double Value, double ForwardReturn);
 
     private sealed record SetObservation(double PortfolioReturn, double? InformationCoefficient);
-
-    private sealed record ScoredSet(IndicatorStrengthSet Set, double Sharpe, double? MeanIc);
 }

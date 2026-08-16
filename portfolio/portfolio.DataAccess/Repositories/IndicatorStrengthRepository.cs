@@ -26,7 +26,7 @@ public class IndicatorStrengthRepository : IIndicatorStrengthRepository
         return await context.IndicatorStrengths
             .AsNoTracking()
             .Where(s => s.Date == date)
-            .OrderByDescending(s => s.Strength)
+            .OrderByDescending(s => s.SharpeRatio)
             .ToListAsync();
     }
 

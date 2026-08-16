@@ -3,6 +3,7 @@ using article_news_raw;
 using article_news_raw.Filters;
 using article_news_raw.gRPC.Services;
 using article_news_raw.Scheduler;
+using FluentMigrator.Runner;
 using Hangfire;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -96,6 +97,10 @@ app.MapGrpcService<ArticleNewsService>();
 app.MapControllers();
 
 var scope = app.Services.CreateScope();
+
+var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+runner.MigrateUp();
+
 var hfJobs = scope.ServiceProvider.GetRequiredService<SetupHangfireJobs>();
 hfJobs.SetupJobs();
 
