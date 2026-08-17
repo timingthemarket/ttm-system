@@ -73,7 +73,7 @@ Schema is owned by **FluentMigrator**, same as the other TTM services: migration
 
 `commodities` (`date`, `commodity_type`, `value`) is created by `20260816_1210_Commodities`, with a composite primary key on `(date, commodity_type)` that the weekly upsert relies on. `commodity_type` holds the values in `CommodityTypes` (`GOLD` / `SILVER` / `BRENT`).
 
-`index_data` (`date`, `index_type`, `value`) is created by `20260817_1200_IndexData`, with the same shape: a composite primary key on `(date, index_type)` backing the weekly upsert. `index_type` holds the values in `IndexTypes` (`SPX` / `VIX`). Both tables use `.AsDate()` rather than the `timestamp with time zone` workaround above, because their entities use `DateOnly`, not `DateTime`.
+`index_data` (`date`, `index_type`, `value`) is created by `20260817_1200_IndexData`, with the same shape: a composite primary key on `(date, index_type)` backing the weekly upsert. `index_type` holds the values in `TTM.Shared.Constants.IndexTypes` (`SPX` / `VIX`) — those live in the shared library, not this service, so gRPC callers can pick a valid index. Both tables use `.AsDate()` rather than the `timestamp with time zone` workaround above, because their entities use `DateOnly`, not `DateTime`.
 
 ### Market data pipeline
 Deliberately **not** commodities-specific — it mirrors the news fetch pipeline so new sources can be added without touching the schedule or the trigger. `FetchMarketDataHandler` (Domain) fans out to every registered `IFetchMarketDataHandler`, catching and reporting exceptions per-source via `SendSystemError` so one bad source can't kill the run, and logging the data points stored per source and in total.
@@ -99,6 +99,13 @@ Every run re-fetches the **full** history rather than a delta, so the repositori
 `AlphaVantageIndexDataService` (DataAccess) fetches **daily** index history from AlphaVantage: `GetSp500History()` and `GetVixHistory()` both hit `function=INDEX_DATA` with `symbol=SPX`/`VIX` (the values in `IndexTypes` double as the symbol). It reuses `ALPHAVANTAGE_API_KEY` and `HttpClientExtensions.GetJson`, and returns `AlphaVantageIndex` (`{symbol, name, interval, data:[{date, open, high, low, close}]}`).
 
 The endpoint returns OHLC per observation but `index_data` stores a single `value` — `FetchIndexDataHandler` persists the **close**. Open/high/low are still mapped on the API model so the table can be widened later without touching the client. Same caveats as the commodities client: quoted numbers parsed with `InvariantCulture`, and a rate-limited call returns HTTP 200 with an `{"Information": ...}` body that deserializes to a null `Data`, so null-guard it. Daily history is several thousand points per index, hence the 60s `HttpClient` timeout.
+
+### gRPC surface served by this service
+Two code-first (protobuf-net.Grpc) services, both mapped in `Program.cs` and listening on the HTTP/2 port 5107:
+- `ArticleNewsService` → `TTM.Shared.gRPC.Services.IArticleNewsService` — per-ticker news sentiment over a date window.
+- `MarketDataService` → `TTM.Shared.gRPC.Services.IMarketDataService` — `GetIndexData(IndexDataQry{IndexType, DateFrom, DateTo})` returns the stored history of **one** index over an inclusive date range, ordered by date, as `IndexDataQryResponse{List<IndexDataDto>}`. The service validates `IndexType` against `IndexTypes.All` and `DateFrom <= DateTo`, throwing `RpcException(InvalidArgument)` rather than silently returning an empty list; the query itself goes through `IQryIndexDataHandler` → `IIndexDataRepository.GetIndexData`.
+
+Adding a method here means touching `TTM.Shared` (the interface plus its `[DataContract]` models) first — both sides reference the same shared library, so the contract has to be added there before it can be implemented.
 
 ### Unused/in-progress code
 `SitemapService` (fetches and recursively parses XML sitemaps, with gzip/deflate/brotli decompression handling) exists but is not registered in DI or referenced by any handler — treat it as scaffolding for a not-yet-wired sitemap-based ingestion path.

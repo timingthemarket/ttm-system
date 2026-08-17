@@ -5,7 +5,7 @@ public class IndexData
     public DateOnly Date { get; set; }
 
     /// <summary>
-    /// One of <see cref="IndexTypes"/>.
+    /// One of <see cref="TTM.Shared.Constants.IndexTypes"/>.
     /// </summary>
     public string IndexType { get; set; } = null!;
 

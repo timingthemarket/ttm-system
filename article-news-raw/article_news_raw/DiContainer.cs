@@ -79,6 +79,7 @@ public static class DiContainer
         service.AddScoped<FetchMarketDataHandler>();
 
         service.AddScoped<IQryArticleNewsSentimentHandler, QryArticleNewsSentimentHandler>();
+        service.AddScoped<IQryIndexDataHandler, QryIndexDataHandler>();
 
         // GRPC Clients
         var masterdataUrl = Environment.GetEnvironmentVariable("MASTERDATA_URL") ?? "http://localhost:5101";

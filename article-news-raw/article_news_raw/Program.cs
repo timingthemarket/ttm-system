@@ -93,6 +93,7 @@ app.UseSwaggerUI();
 app.UseMiddleware<ExceptionLoggerMiddleware>();
 
 app.MapGrpcService<ArticleNewsService>();
+app.MapGrpcService<MarketDataService>();
 
 app.MapControllers();
 

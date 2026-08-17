@@ -37,4 +37,15 @@ public class IndexDataRepository(IDbContextFactory<ArticleNewsDbContext> dbConte
 
         return await dbContext.Database.ExecuteSqlRawAsync(sql, parameters, token);
     }
+
+    public async Task<List<IndexData>> GetIndexData(string indexType, DateOnly dateFrom, DateOnly dateTo, CancellationToken token = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(token);
+
+        return await dbContext.IndexData
+            .AsNoTracking()
+            .Where(i => i.IndexType == indexType && i.Date >= dateFrom && i.Date <= dateTo)
+            .OrderBy(i => i.Date)
+            .ToListAsync(token);
+    }
 }

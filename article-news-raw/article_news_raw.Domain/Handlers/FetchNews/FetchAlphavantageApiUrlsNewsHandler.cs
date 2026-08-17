@@ -30,6 +30,7 @@ public class FetchAlphavantageApiUrlsNewsHandler(
             (alphaVantageApiNewsService.GetMacroEconomyNews, 150, "GetMacroEconomyNews"),
             (alphaVantageApiNewsService.GetEarningsNews, 150, "GetEarningsNews"),
             (alphaVantageApiNewsService.GetRetailWholesaleNews, 150, "GetRetailWholesaleNews"),
+            (alphaVantageApiNewsService.GetTechnologyNews, 150, "GetTechnologyNews"),
         };
 
         var secondsWait = GetSecondsForWaitingBetweenCalls(newsFunctionsList.Count);

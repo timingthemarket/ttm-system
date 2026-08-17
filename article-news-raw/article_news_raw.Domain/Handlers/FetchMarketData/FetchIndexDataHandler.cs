@@ -4,6 +4,7 @@ using article_news_raw.DataAccess.Models;
 using article_news_raw.DataAccess.Models.Api;
 using article_news_raw.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using TTM.Shared.Constants;
 
 namespace article_news_raw.Domain.Handlers.FetchMarketData;
 

@@ -10,4 +10,10 @@ public interface IIndexDataRepository
     /// </summary>
     /// <returns>The number of rows inserted or updated.</returns>
     Task<int> UpsertIndexData(List<IndexData> indexData, CancellationToken token = default);
+
+    /// <summary>
+    /// Returns the stored data points for one index between <paramref name="dateFrom"/> and
+    /// <paramref name="dateTo"/> (both inclusive), ordered by date.
+    /// </summary>
+    Task<List<IndexData>> GetIndexData(string indexType, DateOnly dateFrom, DateOnly dateTo, CancellationToken token = default);
 }
