@@ -6,7 +6,6 @@ COPY ["article-news-raw/article_news_raw.DataAccess/article_news_raw.DataAccess.
 COPY ["article-news-raw/article_news_raw.Domain/article_news_raw.Domain.csproj", "article-news-raw/article_news_raw.Domain/article_news_raw.Domain.csproj"]
 COPY ["TTM.Shared/TTM.Shared/TTM.Shared.csproj", "TTM.Shared/TTM.Shared/TTM.Shared.csproj"]
 
-RUN dotnet restore article-news-raw/article_news_raw/article_news_raw.csproj
 COPY . .
 
 RUN dotnet publish article-news-raw/article_news_raw/article_news_raw.csproj -c Release -o /app/publish --os linux
