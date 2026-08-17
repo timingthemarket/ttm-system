@@ -9,6 +9,7 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
     public DbSet<ArticleTickerSentiment> ArticleTickerSentiments => Set<ArticleTickerSentiment>();
     public DbSet<Commodity> Commodities => Set<Commodity>();
     public DbSet<IndexData> IndexData => Set<IndexData>();
+    public DbSet<EconomicIndicator> EconomicIndicators => Set<EconomicIndicator>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +109,25 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
 
             entity.Property(e => e.IndexType)
                 .HasColumnName("index_type")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Value)
+                .HasColumnName("value")
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<EconomicIndicator>(entity =>
+        {
+            entity.ToTable("economic_indicator");
+
+            entity.HasKey(e => new { e.Date, e.IndicatorType });
+
+            entity.Property(e => e.Date)
+                .HasColumnName("date");
+
+            entity.Property(e => e.IndicatorType)
+                .HasColumnName("indicator_type")
                 .HasMaxLength(50)
                 .IsRequired();
 

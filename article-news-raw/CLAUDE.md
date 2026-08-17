@@ -39,7 +39,7 @@ Note the Dockerfile's build context is the monorepo root (it `COPY`s `article-ne
 ### Required environment variables
 - `POSTGRESSQL_CONN` — Postgres connection string (throws on startup if missing)
 - `FINNHUB_API_KEY` — required by `FinnhubApiNewsService` (only throws if that service is actually resolved/used)
-- `ALPHAVANTAGE_API_KEY` — required by `AlphaVantageApiNewsService` and `AlphaVantageCommoditiesService`
+- `ALPHAVANTAGE_API_KEY` — required by `AlphaVantageApiNewsService`, `AlphaVantageCommoditiesService`, `AlphaVantageIndexDataService` and `AlphaVantageEconomicIndicatorsService`
 - `INFRA_SERVICE_URL` — central log sink (gRPC), defaults to `http://localhost:4317`
 - `OLT_ENDPOINT` — OTLP tracing collector, defaults to `http://localhost:4317`
 - `MASTERDATA_URL` — gRPC endpoint for `securities-masterdata`, used by the sector sentiment report to resolve ticker→sector; defaults to `http://localhost:5101`
@@ -73,7 +73,9 @@ Schema is owned by **FluentMigrator**, same as the other TTM services: migration
 
 `commodities` (`date`, `commodity_type`, `value`) is created by `20260816_1210_Commodities`, with a composite primary key on `(date, commodity_type)` that the weekly upsert relies on. `commodity_type` holds the values in `CommodityTypes` (`GOLD` / `SILVER` / `BRENT`).
 
-`index_data` (`date`, `index_type`, `value`) is created by `20260817_1200_IndexData`, with the same shape: a composite primary key on `(date, index_type)` backing the weekly upsert. `index_type` holds the values in `TTM.Shared.Constants.IndexTypes` (`SPX` / `VIX`) — those live in the shared library, not this service, so gRPC callers can pick a valid index. Both tables use `.AsDate()` rather than the `timestamp with time zone` workaround above, because their entities use `DateOnly`, not `DateTime`.
+`index_data` (`date`, `index_type`, `value`) is created by `20260817_1200_IndexData`, with the same shape: a composite primary key on `(date, index_type)` backing the weekly upsert. `index_type` holds the values in `TTM.Shared.Constants.IndexTypes` (`SPX` / `VIX`) — those live in the shared library, not this service, so gRPC callers can pick a valid index. `economic_indicator` (`date`, `indicator_type`, `value`) is created by `20260817_1300_EconomicIndicators` with the identical shape — composite primary key on `(date, indicator_type)` backing the weekly upsert. `indicator_type` holds the values in `TTM.Shared.Constants.EconomicIndicatorTypes` (`INFLATION` / `FEDERAL_FUNDS_RATE`), also in the shared library so gRPC callers can pick a valid indicator. Note the rows are *period starts*, not observation dates: inflation lands on Jan 1 of each year, the federal funds rate on the 1st of each month.
+
+All three tables use `.AsDate()` rather than the `timestamp with time zone` workaround above, because their entities use `DateOnly`, not `DateTime`.
 
 ### Market data pipeline
 Deliberately **not** commodities-specific — it mirrors the news fetch pipeline so new sources can be added without touching the schedule or the trigger. `FetchMarketDataHandler` (Domain) fans out to every registered `IFetchMarketDataHandler`, catching and reporting exceptions per-source via `SendSystemError` so one bad source can't kill the run, and logging the data points stored per source and in total.
@@ -83,12 +85,15 @@ To add a source: implement `IFetchMarketDataHandler` (a `FetcherName` plus `Hand
 Current implementations:
 - `FetchCommoditiesHandler` — gold, silver and Brent crude monthly history.
 - `FetchIndexDataHandler` — S&P 500 and VIX daily history.
+- `FetchEconomicIndicatorsHandler` — US inflation (annual) and the effective federal funds rate (monthly).
 
 Triggered two ways, same as the news fetch:
 1. **Scheduled**: `SetupHangfireJobs` registers `"weekly-market-data-sync"` (cron `0 5 * * 1`, UTC — Mondays 05:00) publishing `FetchMarketDataTriggerEvent`, consumed by `FetchMarketDataTrigger`.
 2. **On-demand**: `GET /marketdata/trigger-fetch` (`MarketDataController`), bypassing Hangfire/MassTransit.
 
-Every run re-fetches the **full** history rather than a delta, so the repositories' upserts are idempotent: `CommodityRepository.UpsertCommodities` and `IndexDataRepository.UpsertIndexData` are each a single `INSERT ... SELECT FROM UNNEST(...) ON CONFLICT (date, <type column>) DO UPDATE` in one round trip. Both de-duplicate the payload first, because `ON CONFLICT DO UPDATE` cannot touch the same row twice in one statement and would otherwise abort the whole batch.
+Every run re-fetches the **full** history rather than a delta, so the repositories' upserts are idempotent: `CommodityRepository.UpsertCommodities`, `IndexDataRepository.UpsertIndexData` and `EconomicIndicatorRepository.UpsertEconomicIndicators` are each a single `INSERT ... SELECT FROM UNNEST(...) ON CONFLICT (date, <type column>) DO UPDATE` in one round trip. All three de-duplicate the payload first, because `ON CONFLICT DO UPDATE` cannot touch the same row twice in one statement and would otherwise abort the whole batch.
+
+Note the run now makes 7 AlphaVantage calls (3 commodities + 2 indexes + 2 economic indicators). On a free tier capped at 5 calls/minute the tail of that will be rate-limited, which degrades gracefully — see the null-guard note below — but if the `No {…} data points returned` warnings start showing up weekly, the fix is the inter-call throttle `FetchAlphavantageApiUrlsNewsHandler` already uses.
 
 ### Commodities API client
 `AlphaVantageCommoditiesService` (DataAccess) fetches **monthly** commodity history from AlphaVantage: `GetGoldHistory()` and `GetSilverHistory()` hit `function=GOLD_SILVER_HISTORY` with `symbol=GOLD`/`SILVER`, `GetBrentCrudeOilHistory()` hits `function=BRENT`. It reuses `ALPHAVANTAGE_API_KEY` and the `HttpClientExtensions.GetJson` helper, and returns `AlphaVantageCommodity` (`{name, interval, unit, data:[{date, value}]}`).
@@ -100,10 +105,18 @@ Every run re-fetches the **full** history rather than a delta, so the repositori
 
 The endpoint returns OHLC per observation but `index_data` stores a single `value` — `FetchIndexDataHandler` persists the **close**. Open/high/low are still mapped on the API model so the table can be widened later without touching the client. Same caveats as the commodities client: quoted numbers parsed with `InvariantCulture`, and a rate-limited call returns HTTP 200 with an `{"Information": ...}` body that deserializes to a null `Data`, so null-guard it. Daily history is several thousand points per index, hence the 60s `HttpClient` timeout.
 
+### Economic indicators API client
+`AlphaVantageEconomicIndicatorsService` (DataAccess) fetches US macro history from AlphaVantage: `GetInflationHistory()` hits `function=INFLATION` and `GetFederalFundsRateHistory()` hits `function=FEDERAL_FUNDS_RATE&interval=monthly`. The values in `EconomicIndicatorTypes` double as the `function` parameter, the same trick `IndexTypes` plays with `symbol`. It reuses `ALPHAVANTAGE_API_KEY` and `HttpClientExtensions.GetJson`, and returns `AlphaVantageEconomicIndicator` (`{name, interval, unit, data:[{date, value}]}` — the same envelope as the commodities endpoint, kept as a separate model so the two can diverge).
+
+The asymmetry is deliberate: **`INFLATION` is published annually only and takes no `interval` parameter at all**, so the private `GetIndicator(function, interval?, token)` helper adds `interval` conditionally, mirroring how `GetCommodity` conditionally adds `symbol`. Dates come back as the first day of the period, so both indicators land on `DateOnly`. Same caveats as the other two clients: quoted numbers parsed with `InvariantCulture` (`"."` marks a missing observation and is skipped), and a rate-limited call returns HTTP 200 with an `{"Information": ...}` body that deserializes to a null `Data`, so null-guard it. History is a few hundred points per indicator, hence the 30s `HttpClient` timeout rather than the index client's 60s.
+
+`datatype=json` is passed explicitly, as with the commodities client. These two functions already default to json so it is not load-bearing here — but it does mean the AlphaVantage `demo` key will not work for these calls, since its whitelist matches the exact URL. Test with a real key.
+
 ### gRPC surface served by this service
 Two code-first (protobuf-net.Grpc) services, both mapped in `Program.cs` and listening on the HTTP/2 port 5107:
 - `ArticleNewsService` → `TTM.Shared.gRPC.Services.IArticleNewsService` — per-ticker news sentiment over a date window.
 - `MarketDataService` → `TTM.Shared.gRPC.Services.IMarketDataService` — `GetIndexData(IndexDataQry{IndexType, DateFrom, DateTo})` returns the stored history of **one** index over an inclusive date range, ordered by date, as `IndexDataQryResponse{List<IndexDataDto>}`. The service validates `IndexType` against `IndexTypes.All` and `DateFrom <= DateTo`, throwing `RpcException(InvalidArgument)` rather than silently returning an empty list; the query itself goes through `IQryIndexDataHandler` → `IIndexDataRepository.GetIndexData`.
+  `GetEconomicIndicators(EconomicIndicatorQry{IndicatorType, DateFrom, DateTo})` is the same shape for economic indicators, returning `EconomicIndicatorQryResponse{List<EconomicIndicatorDto>}`, validating `IndicatorType` against `EconomicIndicatorTypes.All`, and going through `IQryEconomicIndicatorHandler` → `IEconomicIndicatorRepository.GetEconomicIndicators`.
 
 Adding a method here means touching `TTM.Shared` (the interface plus its `[DataContract]` models) first — both sides reference the same shared library, so the contract has to be added there before it can be implemented.
 

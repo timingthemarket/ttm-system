@@ -11,4 +11,9 @@ public interface IMarketDataService
     /// Returns the stored history of a single index over an inclusive date range, ordered by date.
     /// </summary>
     ValueTask<IndexDataQryResponse> GetIndexData(IndexDataQry qry, CallContext context = default);
+
+    /// <summary>
+    /// Returns the stored history of a single economic indicator over an inclusive date range, ordered by date.
+    /// </summary>
+    ValueTask<EconomicIndicatorQryResponse> GetEconomicIndicators(EconomicIndicatorQry qry, CallContext context = default);
 }

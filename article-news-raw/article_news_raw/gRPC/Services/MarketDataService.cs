@@ -7,7 +7,9 @@ using TTM.Shared.Models.ArticleNewsRaw;
 
 namespace article_news_raw.gRPC.Services;
 
-public class MarketDataService(IQryIndexDataHandler qryIndexDataHandler) : IMarketDataService
+public class MarketDataService(
+    IQryIndexDataHandler qryIndexDataHandler,
+    IQryEconomicIndicatorHandler qryEconomicIndicatorHandler) : IMarketDataService
 {
     public async ValueTask<IndexDataQryResponse> GetIndexData(IndexDataQry qry, CallContext context)
     {
@@ -25,6 +27,25 @@ public class MarketDataService(IQryIndexDataHandler qryIndexDataHandler) : IMark
         return new IndexDataQryResponse
         {
             IndexData = indexData
+        };
+    }
+
+    public async ValueTask<EconomicIndicatorQryResponse> GetEconomicIndicators(EconomicIndicatorQry qry, CallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(qry.IndicatorType) || !EconomicIndicatorTypes.All.Contains(qry.IndicatorType))
+            throw new RpcException(new Status(StatusCode.InvalidArgument,
+                $"Unknown economic indicator '{qry.IndicatorType}', expected one of {string.Join(", ", EconomicIndicatorTypes.All)}"));
+
+        if (qry.DateFrom > qry.DateTo)
+            throw new RpcException(new Status(StatusCode.InvalidArgument,
+                $"DateFrom {qry.DateFrom} is after DateTo {qry.DateTo}"));
+
+        var economicIndicators = await qryEconomicIndicatorHandler.HandleGetEconomicIndicators(qry.IndicatorType,
+            qry.DateFrom, qry.DateTo, context.CancellationToken);
+
+        return new EconomicIndicatorQryResponse
+        {
+            EconomicIndicators = economicIndicators
         };
     }
 }

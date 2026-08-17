@@ -51,6 +51,7 @@ public static class DiContainer
         service.AddScoped<IArticleUrlRepository, ArticleUrlRepository>();
         service.AddScoped<ICommodityRepository, CommodityRepository>();
         service.AddScoped<IIndexDataRepository, IndexDataRepository>();
+        service.AddScoped<IEconomicIndicatorRepository, EconomicIndicatorRepository>();
 
         service.AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -63,6 +64,7 @@ public static class DiContainer
         service.AddScoped<IAlphaVantageApiNewsService, AlphaVantageApiNewsService>();
         service.AddScoped<IAlphaVantageCommoditiesService, AlphaVantageCommoditiesService>();
         service.AddScoped<IAlphaVantageIndexDataService, AlphaVantageIndexDataService>();
+        service.AddScoped<IAlphaVantageEconomicIndicatorsService, AlphaVantageEconomicIndicatorsService>();
 
 
         //service.AddScoped<IFetchNewsHandler, FetchWebNewsArticlesHandler>();
@@ -75,11 +77,13 @@ public static class DiContainer
         // Market data sources - add new IFetchMarketDataHandler implementations here.
         service.AddScoped<IFetchMarketDataHandler, FetchCommoditiesHandler>();
         service.AddScoped<IFetchMarketDataHandler, FetchIndexDataHandler>();
+        service.AddScoped<IFetchMarketDataHandler, FetchEconomicIndicatorsHandler>();
 
         service.AddScoped<FetchMarketDataHandler>();
 
         service.AddScoped<IQryArticleNewsSentimentHandler, QryArticleNewsSentimentHandler>();
         service.AddScoped<IQryIndexDataHandler, QryIndexDataHandler>();
+        service.AddScoped<IQryEconomicIndicatorHandler, QryEconomicIndicatorHandler>();
 
         // GRPC Clients
         var masterdataUrl = Environment.GetEnvironmentVariable("MASTERDATA_URL") ?? "http://localhost:5101";
