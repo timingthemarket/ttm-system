@@ -8,6 +8,7 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
     public DbSet<ArticleUrl> ArticleUrls => Set<ArticleUrl>();
     public DbSet<ArticleTickerSentiment> ArticleTickerSentiments => Set<ArticleTickerSentiment>();
     public DbSet<Commodity> Commodities => Set<Commodity>();
+    public DbSet<IndexData> IndexData => Set<IndexData>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +89,25 @@ public class ArticleNewsDbContext(DbContextOptions<ArticleNewsDbContext> options
 
             entity.Property(e => e.CommodityType)
                 .HasColumnName("commodity_type")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Value)
+                .HasColumnName("value")
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<IndexData>(entity =>
+        {
+            entity.ToTable("index_data");
+
+            entity.HasKey(e => new { e.Date, e.IndexType });
+
+            entity.Property(e => e.Date)
+                .HasColumnName("date");
+
+            entity.Property(e => e.IndexType)
+                .HasColumnName("index_type")
                 .HasMaxLength(50)
                 .IsRequired();
 

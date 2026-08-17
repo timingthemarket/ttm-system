@@ -73,6 +73,8 @@ Schema is owned by **FluentMigrator**, same as the other TTM services: migration
 
 `commodities` (`date`, `commodity_type`, `value`) is created by `20260816_1210_Commodities`, with a composite primary key on `(date, commodity_type)` that the weekly upsert relies on. `commodity_type` holds the values in `CommodityTypes` (`GOLD` / `SILVER` / `BRENT`).
 
+`index_data` (`date`, `index_type`, `value`) is created by `20260817_1200_IndexData`, with the same shape: a composite primary key on `(date, index_type)` backing the weekly upsert. `index_type` holds the values in `IndexTypes` (`SPX` / `VIX`). Both tables use `.AsDate()` rather than the `timestamp with time zone` workaround above, because their entities use `DateOnly`, not `DateTime`.
+
 ### Market data pipeline
 Deliberately **not** commodities-specific — it mirrors the news fetch pipeline so new sources can be added without touching the schedule or the trigger. `FetchMarketDataHandler` (Domain) fans out to every registered `IFetchMarketDataHandler`, catching and reporting exceptions per-source via `SendSystemError` so one bad source can't kill the run, and logging the data points stored per source and in total.
 
@@ -80,17 +82,23 @@ To add a source: implement `IFetchMarketDataHandler` (a `FetcherName` plus `Hand
 
 Current implementations:
 - `FetchCommoditiesHandler` — gold, silver and Brent crude monthly history.
+- `FetchIndexDataHandler` — S&P 500 and VIX daily history.
 
 Triggered two ways, same as the news fetch:
 1. **Scheduled**: `SetupHangfireJobs` registers `"weekly-market-data-sync"` (cron `0 5 * * 1`, UTC — Mondays 05:00) publishing `FetchMarketDataTriggerEvent`, consumed by `FetchMarketDataTrigger`.
 2. **On-demand**: `GET /marketdata/trigger-fetch` (`MarketDataController`), bypassing Hangfire/MassTransit.
 
-Every run re-fetches the **full** history rather than a delta, so `CommodityRepository.UpsertCommodities` is idempotent: a single `INSERT ... SELECT FROM UNNEST(...) ON CONFLICT (date, commodity_type) DO UPDATE` in one round trip. It de-duplicates the payload first, because `ON CONFLICT DO UPDATE` cannot touch the same row twice in one statement and would otherwise abort the whole batch.
+Every run re-fetches the **full** history rather than a delta, so the repositories' upserts are idempotent: `CommodityRepository.UpsertCommodities` and `IndexDataRepository.UpsertIndexData` are each a single `INSERT ... SELECT FROM UNNEST(...) ON CONFLICT (date, <type column>) DO UPDATE` in one round trip. Both de-duplicate the payload first, because `ON CONFLICT DO UPDATE` cannot touch the same row twice in one statement and would otherwise abort the whole batch.
 
 ### Commodities API client
 `AlphaVantageCommoditiesService` (DataAccess) fetches **monthly** commodity history from AlphaVantage: `GetGoldHistory()` and `GetSilverHistory()` hit `function=GOLD_SILVER_HISTORY` with `symbol=GOLD`/`SILVER`, `GetBrentCrudeOilHistory()` hits `function=BRENT`. It reuses `ALPHAVANTAGE_API_KEY` and the `HttpClientExtensions.GetJson` helper, and returns `AlphaVantageCommodity` (`{name, interval, unit, data:[{date, value}]}`).
 
 `datatype=json` is passed explicitly because `GOLD_SILVER_HISTORY` defaults to **csv** — do not remove it. Note this means the AlphaVantage `demo` key will not work for these calls: its whitelist matches on the exact URL, so the extra parameter makes it return the `{"Information": ...}` body instead of data. Values come back as quoted strings and must be parsed with `InvariantCulture`; AlphaVantage uses `"."` for a missing observation. As with the news service, a rate-limited call returns HTTP 200 with an `{"Information": ...}` body, which deserializes to an object with a null `Data`, so null-guard it.
+
+### Index data API client
+`AlphaVantageIndexDataService` (DataAccess) fetches **daily** index history from AlphaVantage: `GetSp500History()` and `GetVixHistory()` both hit `function=INDEX_DATA` with `symbol=SPX`/`VIX` (the values in `IndexTypes` double as the symbol). It reuses `ALPHAVANTAGE_API_KEY` and `HttpClientExtensions.GetJson`, and returns `AlphaVantageIndex` (`{symbol, name, interval, data:[{date, open, high, low, close}]}`).
+
+The endpoint returns OHLC per observation but `index_data` stores a single `value` — `FetchIndexDataHandler` persists the **close**. Open/high/low are still mapped on the API model so the table can be widened later without touching the client. Same caveats as the commodities client: quoted numbers parsed with `InvariantCulture`, and a rate-limited call returns HTTP 200 with an `{"Information": ...}` body that deserializes to a null `Data`, so null-guard it. Daily history is several thousand points per index, hence the 60s `HttpClient` timeout.
 
 ### Unused/in-progress code
 `SitemapService` (fetches and recursively parses XML sitemaps, with gzip/deflate/brotli decompression handling) exists but is not registered in DI or referenced by any handler — treat it as scaffolding for a not-yet-wired sitemap-based ingestion path.

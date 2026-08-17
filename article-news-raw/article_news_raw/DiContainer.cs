@@ -50,6 +50,7 @@ public static class DiContainer
         service.AddDbContextFactory<ArticleNewsDbContext>(options => options.UseNpgsql(connectionString));
         service.AddScoped<IArticleUrlRepository, ArticleUrlRepository>();
         service.AddScoped<ICommodityRepository, CommodityRepository>();
+        service.AddScoped<IIndexDataRepository, IndexDataRepository>();
 
         service.AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -61,6 +62,7 @@ public static class DiContainer
         service.AddScoped<IFinnhubApiNewsService, FinnhubApiNewsService>();
         service.AddScoped<IAlphaVantageApiNewsService, AlphaVantageApiNewsService>();
         service.AddScoped<IAlphaVantageCommoditiesService, AlphaVantageCommoditiesService>();
+        service.AddScoped<IAlphaVantageIndexDataService, AlphaVantageIndexDataService>();
 
 
         //service.AddScoped<IFetchNewsHandler, FetchWebNewsArticlesHandler>();
@@ -72,6 +74,7 @@ public static class DiContainer
 
         // Market data sources - add new IFetchMarketDataHandler implementations here.
         service.AddScoped<IFetchMarketDataHandler, FetchCommoditiesHandler>();
+        service.AddScoped<IFetchMarketDataHandler, FetchIndexDataHandler>();
 
         service.AddScoped<FetchMarketDataHandler>();
 
